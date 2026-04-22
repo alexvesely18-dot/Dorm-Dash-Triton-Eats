@@ -148,6 +148,8 @@ type Extracted = {
   total: string | null;
 };
 
+const BUILDINGS = ["Tioga Hall","Tenaya Hall","Tahoe Hall","Shasta Hall","Anza Hall","De Anza Hall","Cuicacalli","Matthews","Rita Atkinson Residences","Mesa Nueva","Marshall Upper/Lower","Warren Apartments","Revelle Dorms"];
+
 export default function OrderPage() {
   const [hall, setHall] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -158,6 +160,9 @@ export default function OrderPage() {
   const [extracted, setExtracted] = useState<Extracted | null>(null);
   const [ocrError, setOcrError] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [building, setBuilding] = useState("Tioga Hall");
+  const [toDoor, setToDoor] = useState(false);
+  const [room, setRoom] = useState("");
 
   const menu = MENUS[hall] ?? [];
   const allItems = menu.flatMap((g) => g.items);
@@ -211,10 +216,11 @@ export default function OrderPage() {
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  const canSubmit = hall && cartCount > 0 && triton && file && !analyzing && (extracted || ocrError);
+  const canSubmit = hall && cartCount > 0 && triton && file && !analyzing && (extracted || ocrError) && building && (!toDoor || room.trim());
 
   const saveAndGo = () => {
     const hallData = HALLS.find((h) => h.id === hall);
+    const doorFee = toDoor ? 2.0 : 0;
     const order = {
       hall: hallData?.name,
       college: hallData?.college,
@@ -225,7 +231,10 @@ export default function OrderPage() {
       pickup_time: extracted?.pickup_time ?? null,
       order_number: extracted?.order_number ?? `TDE-${Math.floor(20000 + Math.random() * 9999)}`,
       subtotal: `$${cartTotal.toFixed(2)}`,
-      total: `$${(cartTotal * 1.0775 + 1.5).toFixed(2)}`,
+      total: `$${(cartTotal * 1.0775 + 1.5 + doorFee).toFixed(2)}`,
+      building,
+      room: toDoor ? room.trim() : null,
+      toDoor,
       timestamp: new Date().toISOString(),
     };
     localStorage.setItem("dorm_dash_active_order", JSON.stringify(order));
@@ -424,6 +433,51 @@ export default function OrderPage() {
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile}/>
         </section>
 
+        {/* ── Step 5: Delivery Address ── */}
+        <section>
+          <Step n={5} label="Where should we deliver?" />
+          <div className="mt-3 flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Building</label>
+              <select
+                value={building}
+                onChange={e => setBuilding(e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition appearance-none"
+              >
+                {BUILDINGS.map(b => <option key={b}>{b}</option>)}
+              </select>
+            </div>
+
+            {/* To-door upgrade */}
+            <button
+              onClick={() => setToDoor(!toDoor)}
+              className={`flex items-center gap-4 rounded-2xl border-2 px-4 py-4 transition text-left ${
+                toDoor ? "bg-[#003087]/5 border-[#003087]" : "bg-white border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${toDoor ? "bg-[#003087] border-[#003087] scale-110" : "border-gray-300"}`}>
+                {toDoor && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              </div>
+              <div>
+                <p className="font-bold text-gray-800">🚪 Deliver to my room door <span className="text-[#003087]">+$2.00</span></p>
+                <p className="text-xs text-gray-400 mt-0.5">Dasher will bring it directly to your door</p>
+              </div>
+            </button>
+
+            {toDoor && (
+              <div className="animate-fade-in flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Room Number</label>
+                <input
+                  className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition"
+                  placeholder="e.g. 214B"
+                  value={room}
+                  onChange={e => setRoom(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
       </main>
 
       {/* CTA */}
@@ -442,7 +496,7 @@ export default function OrderPage() {
           </Link>
           {!canSubmit && !analyzing && (
             <p className="text-center text-xs text-gray-400 mt-2">
-              {!hall ? "Select a dining hall" : cartCount === 0 ? "Add at least one item" : !triton ? "Confirm Triton2Go container" : "Upload your screenshot"}
+              {!hall ? "Select a dining hall" : cartCount === 0 ? "Add at least one item" : !triton ? "Confirm Triton2Go container" : !file ? "Upload your screenshot" : toDoor && !room.trim() ? "Enter your room number" : "Almost there!"}
             </p>
           )}
         </div>
