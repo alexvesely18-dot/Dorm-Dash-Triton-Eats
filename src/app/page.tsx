@@ -2,74 +2,74 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ShoppingBag, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false);
+  const [show, setShow] = useState(false);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8f9fb]">
-      {/* Top banner */}
-      <div className="bg-[#003087] pt-16 pb-10 px-6 flex flex-col items-center">
-        <div className="w-16 h-16 bg-[#C69214] rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-          <ShoppingBag size={32} className="text-white" />
+    <div className="min-h-screen flex flex-col bg-[#003087]">
+      {/* Hero */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 pt-16 pb-8 text-white">
+        <div className="animate-float text-6xl mb-5 select-none">🛵</div>
+        <h1 className="text-4xl font-black tracking-tight">Dorm Dash</h1>
+        <p className="text-white/60 mt-2 text-base">UCSD Triton Eats Delivery</p>
+
+        {/* Feature pills */}
+        <div className="flex gap-2 mt-6 flex-wrap justify-center">
+          {["Fast Pickup", "Triton2Go ✓", "Dorm Delivery"].map((t) => (
+            <span key={t} className="bg-white/15 text-white/90 text-xs font-medium px-3 py-1.5 rounded-full">
+              {t}
+            </span>
+          ))}
         </div>
-        <h1 className="text-white text-2xl font-bold">Dorm Dash</h1>
-        <p className="text-white/70 text-sm mt-1">Triton Eats Delivery</p>
       </div>
 
       {/* Card */}
-      <div className="flex-1 -mt-5 bg-[#f8f9fb] rounded-t-3xl px-6 pt-8 pb-10 max-w-md mx-auto w-full">
-        <h2 className="text-xl font-bold text-gray-800 mb-6">Sign In</h2>
+      <div className="bg-[#F8FAFC] rounded-t-[2rem] px-6 pt-8 pb-10 shadow-2xl">
+        <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome back</h2>
+        <p className="text-gray-400 text-sm mb-6">Sign in to your Triton account</p>
 
         <div className="flex flex-col gap-4">
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-              UCSD Email
-            </label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">UCSD Email</label>
             <input
               type="email"
               placeholder="triton@ucsd.edu"
-              className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/30 focus:border-[#003087] shadow-sm"
+              className="bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition"
             />
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-              Password
-            </label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Password</label>
             <div className="relative">
               <input
-                type={showPassword ? "text" : "password"}
+                type={show ? "text" : "password"}
                 placeholder="••••••••"
-                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/30 focus:border-[#003087] shadow-sm"
+                className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 pr-12 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              <button onClick={() => setShow(!show)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+                {show ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
 
           <Link
-            href="/order"
-            className="mt-2 w-full flex items-center justify-center bg-[#003087] text-white font-semibold py-3.5 rounded-xl shadow-md hover:bg-[#002270] transition active:scale-[0.98] text-sm"
+            href="/home"
+            className="mt-1 w-full flex items-center justify-center bg-[#F5B700] text-[#003087] font-bold py-4 rounded-2xl shadow-lg hover:bg-[#e0a800] transition active:scale-[0.98] text-base"
           >
-            Sign In
+            Sign In →
           </Link>
 
-          <div className="flex items-center gap-3 my-1">
+          <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs text-gray-400">or</span>
+            <span className="text-xs text-gray-400">new to Dorm Dash?</span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
 
           <Link
             href="/signup"
-            className="w-full flex items-center justify-center border-2 border-[#003087] text-[#003087] font-semibold py-3.5 rounded-xl hover:bg-[#003087]/5 transition active:scale-[0.98] text-sm"
+            className="w-full flex items-center justify-center border-2 border-[#003087] text-[#003087] font-semibold py-3.5 rounded-2xl hover:bg-[#003087]/5 transition text-sm"
           >
             Create Account
           </Link>
