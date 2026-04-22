@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Plus, ChevronRight, Home, ClipboardList, User } from "lucide-react";
+import { Bell, Plus, ChevronRight } from "lucide-react";
+import BottomNav from "@/components/BottomNav";
 
 const PAST_ORDERS = [
   {
@@ -157,22 +158,7 @@ export default function HomePage() {
 
       </main>
 
-      {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-xl">
-        <div className="max-w-md mx-auto flex items-center h-16">
-          {[
-            { icon: <Home size={20}/>, label: "Home", active: true, href: "/home" },
-            { icon: <ClipboardList size={20}/>, label: "Orders", active: false, href: "/home" },
-            { icon: <User size={20}/>, label: "Profile", active: false, href: "/home" },
-          ].map((tab) => (
-            <Link key={tab.label} href={tab.href} className={`flex-1 flex flex-col items-center gap-0.5 py-2 transition ${tab.active ? "text-[#003087]" : "text-gray-400"}`}>
-              {tab.icon}
-              <span className="text-[10px] font-semibold">{tab.label}</span>
-              {tab.active && <span className="w-1 h-1 bg-[#F5B700] rounded-full mt-0.5"/>}
-            </Link>
-          ))}
-        </div>
-      </nav>
+      <BottomNav />
     </div>
   );
 }
