@@ -1,9 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
-const client = new Anthropic();
-
 export async function POST(req: NextRequest) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ success: false, error: "No API key configured" });
+  }
+
+  const client = new Anthropic();
+
   try {
     const { imageBase64, mimeType } = await req.json();
 
