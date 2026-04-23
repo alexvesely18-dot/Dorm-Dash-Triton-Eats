@@ -29,6 +29,10 @@ export default function AdminDashboard() {
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [tab, setTab] = useState<"live" | "all" | "map">("live");
   const [tick, setTick] = useState(0);
+  const [assigning, setAssigning] = useState<string | null>(null);
+  const [assignName, setAssignName] = useState("");
+  const [assignTransport, setAssignTransport] = useState<"bike" | "scooter">("bike");
+  const [assignCollege, setAssignCollege] = useState("");
 
   useEffect(() => {
     if (localStorage.getItem("admin_authed") !== "1") {
@@ -55,6 +59,24 @@ export default function AdminDashboard() {
   const logout = () => {
     localStorage.removeItem("admin_authed");
     router.push("/admin");
+  };
+
+  const assignOrder = async (orderId: string) => {
+    if (!assignName.trim()) return;
+    await fetch(`/api/orders/${orderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "claimed",
+        dasherName: assignName.trim(),
+        dasherTransport: assignTransport,
+        claimedAt: new Date().toISOString(),
+      }),
+    });
+    setAssigning(null);
+    setAssignName("");
+    setAssignCollege("");
+    fetchOrders();
   };
 
   const live    = orders.filter(o => o.status !== "delivered");
@@ -269,6 +291,68 @@ export default function AdminDashboard() {
                               {order.dasherLat ? ` · GPS active` : ""}
                             </p>
                           </div>
+                        </div>
+                      )}
+
+                      {/* Admin — Assign Dasher (pending orders only) */}
+                      {order.status === "pending" && (
+                        <div className="bg-white/4 rounded-xl px-3 py-3">
+                          <p className="text-white/35 text-[10px] font-bold uppercase tracking-wide mb-2">Assign Dasher</p>
+                          {assigning !== order.id ? (
+                            <button
+                              onClick={() => { setAssigning(order.id); setAssignName(""); setAssignCollege(""); }}
+                              className="w-full py-2 rounded-xl bg-[#F5B700]/20 text-[#F5B700] text-sm font-bold hover:bg-[#F5B700]/30 transition"
+                            >
+                              + Assign a Dasher Manually
+                            </button>
+                          ) : (
+                            <div className="flex flex-col gap-2">
+                              <input
+                                placeholder="Dasher's full name"
+                                value={assignName}
+                                onChange={e => setAssignName(e.target.value)}
+                                className="w-full bg-white/8 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                              />
+                              <div className="flex gap-2">
+                                {(["bike", "scooter"] as const).map(t => (
+                                  <button
+                                    key={t}
+                                    onClick={() => setAssignTransport(t)}
+                                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${assignTransport === t ? "bg-[#F5B700] text-[#003087]" : "bg-white/8 text-white/60 hover:bg-white/12"}`}
+                                  >
+                                    {t === "bike" ? "🚲 Bike" : "🛵 Scooter"}
+                                  </button>
+                                ))}
+                              </div>
+                              <input
+                                placeholder="Dasher's college (optional — for door delivery check)"
+                                value={assignCollege}
+                                onChange={e => setAssignCollege(e.target.value)}
+                                className="w-full bg-white/8 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                              />
+                              {/* College mismatch disclaimer */}
+                              {order.toDoor && assignCollege && order.deliveryCollege && assignCollege !== order.deliveryCollege && (
+                                <div className="bg-yellow-500/15 border border-yellow-500/40 rounded-xl px-3 py-2.5 text-xs text-yellow-300 font-semibold leading-relaxed">
+                                  ⚠️ College mismatch — this door delivery requires a <span className="text-yellow-200">{order.deliveryCollege}</span> dasher, but you&apos;re assigning someone from <span className="text-yellow-200">{assignCollege}</span>. The student may not receive their order at their door. Proceed only if no matching dasher is available.
+                                </div>
+                              )}
+                              <div className="flex gap-2 mt-1">
+                                <button
+                                  onClick={() => setAssigning(null)}
+                                  className="flex-1 py-2 rounded-xl bg-white/6 text-white/60 text-sm font-semibold hover:bg-white/10 transition"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => assignOrder(order.id)}
+                                  disabled={!assignName.trim()}
+                                  className="flex-1 py-2 rounded-xl bg-[#F5B700] text-[#003087] text-sm font-black hover:bg-[#e0a800] transition disabled:opacity-40"
+                                >
+                                  Assign →
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 
