@@ -245,17 +245,19 @@ export default function OrderPage() {
     const hallData = HALLS.find((h) => h.id === hall);
     const doorFee  = toDoor ? 2.0 : 0;
     const destCoords = BUILDING_COORDS[building] ?? { lat: 32.8800, lng: -117.2340 };
+    const cartItems = Object.entries(cart).map(([name, qty]) => `${qty}× ${name}`);
+    const total = `$${(cartTotal * 1.0775 + 1.5 + doorFee).toFixed(2)}`;
     const payload = {
       hall:          hallData?.name    ?? "",
       hallEmoji:     hallData?.emoji   ?? "🍽",
       hallCollege:   hallData?.college ?? "",
       hallLat:       hallData?.lat     ?? 32.8800,
       hallLng:       hallData?.lng     ?? -117.2340,
-      cart:          Object.entries(cart).map(([name, qty]) => `${qty}× ${name}`),
+      cart:          cartItems,
       pid_last4:     extracted?.pid_last4   ?? null,
       pickup_time:   extracted?.pickup_time ?? null,
       order_number:  extracted?.order_number ?? null,
-      total:         `$${(cartTotal * 1.0775 + 1.5 + doorFee).toFixed(2)}`,
+      total,
       building,
       deliveryCollege: BUILDING_COLLEGE[building] ?? "",
       destLat:       destCoords.lat,
@@ -267,6 +269,27 @@ export default function OrderPage() {
     const res  = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const data = await res.json();
     localStorage.setItem("dorm_dash_order_id", data.id);
+
+    // Persist to student history
+    try {
+      const entry = {
+        id: data.id,
+        hall: hallData?.name ?? "",
+        hallEmoji: hallData?.emoji ?? "🍽",
+        hallCollege: hallData?.college ?? "",
+        cart: cartItems,
+        total,
+        building,
+        room: toDoor ? room.trim() : null,
+        toDoor,
+        status: "pending",
+        placedAt: new Date().toISOString(),
+        scheduledFor: scheduleMode && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
+      };
+      const prev = JSON.parse(localStorage.getItem("student_history") ?? "[]");
+      localStorage.setItem("student_history", JSON.stringify([entry, ...prev]));
+    } catch {}
+
     router.push("/home");
   };
 

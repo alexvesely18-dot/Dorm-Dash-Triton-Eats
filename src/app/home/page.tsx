@@ -40,6 +40,7 @@ export default function HomePage() {
   const [userName, setUserName] = useState("Triton");
   const [userInitials, setUserInitials] = useState("AT");
   const [theme, setTheme] = useState(getCollegeTheme(null));
+  const [recentOrders, setRecentOrders] = useState<{ id: string; hall: string; hallEmoji: string; cart: string[]; total: string; deliveredAt?: string }[]>([]);
 
   useEffect(() => {
     const id = localStorage.getItem("dorm_dash_order_id");
@@ -51,6 +52,12 @@ export default function HomePage() {
     setUserInitials(((parts[0]?.[0] ?? "A") + (parts[1]?.[0] ?? "T")).toUpperCase());
     const college = localStorage.getItem("user_college");
     setTheme(getCollegeTheme(college));
+
+    try {
+      const history = JSON.parse(localStorage.getItem("student_history") ?? "[]");
+      const delivered = history.filter((o: { status: string }) => o.status === "delivered").slice(0, 3);
+      setRecentOrders(delivered);
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -64,6 +71,25 @@ export default function HomePage() {
         if (alive) setOrder(data.order);
         if (data.order?.status === "delivered") {
           localStorage.removeItem("dorm_dash_order_id");
+          // Mark matching history entry as delivered
+          try {
+            const history = JSON.parse(localStorage.getItem("student_history") ?? "[]");
+            const updated = history.map((e: Record<string, unknown>) =>
+              e.id === data.order.id
+                ? { ...e, status: "delivered", dasherName: data.order.dasherName, deliveredAt: new Date().toISOString() }
+                : e
+            );
+            localStorage.setItem("student_history", JSON.stringify(updated));
+          } catch {}
+        } else if (data.order && ["claimed","picked_up"].includes(data.order.status)) {
+          // Keep status in sync for the orders page
+          try {
+            const history = JSON.parse(localStorage.getItem("student_history") ?? "[]");
+            const updated = history.map((e: Record<string, unknown>) =>
+              e.id === data.order.id ? { ...e, status: data.order.status, dasherName: data.order.dasherName } : e
+            );
+            localStorage.setItem("student_history", JSON.stringify(updated));
+          } catch {}
         }
       } catch { /* retry */ }
     };
@@ -232,34 +258,40 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Past Orders — hardcoded demos */}
+        {/* Past Orders — real from localStorage */}
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Past Orders</p>
-            <button className="text-xs font-semibold" style={{ color: theme.accent }}>See all</button>
+            <Link href="/orders" className="text-xs font-semibold" style={{ color: theme.accent }}>See all</Link>
           </div>
-          <div className="flex flex-col gap-3">
-            {[
-              { id: 1, hall: "64 Degrees",   items: "Grilled Chicken Bowl, Garden Salad, Water", date: "Apr 21", total: "$21.79", emoji: "🍳", bg: "bg-orange-100" },
-              { id: 2, hall: "Pines",         items: "Tacos ×2, Sparkling Water",                date: "Apr 18", total: "$16.50", emoji: "🌮", bg: "bg-green-100"  },
-              { id: 3, hall: "Sixth Market",  items: "Buddha Bowl, Kombucha",                    date: "Apr 15", total: "$14.25", emoji: "🥗", bg: "bg-blue-100"   },
-            ].map((o) => (
-              <div key={o.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-                <div className={`w-12 h-12 ${o.bg} rounded-xl flex items-center justify-center text-2xl flex-shrink-0`}>{o.emoji}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-sm text-gray-900">{o.hall}</p>
-                    <p className="text-xs text-gray-400">{o.date}</p>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-0.5 truncate">{o.items}</p>
-                  <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-xs font-bold" style={{ color: theme.accent }}>{o.total}</span>
-                    <span className="text-[10px] bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">✓ Delivered</span>
+          {recentOrders.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center">
+              <p className="text-2xl mb-2">🍽</p>
+              <p className="text-sm font-bold text-gray-600">No orders yet</p>
+              <p className="text-xs text-gray-400 mt-1">Your delivered orders will appear here</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {recentOrders.map((o) => (
+                <div key={o.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">{o.hallEmoji}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-sm text-gray-900">{o.hall}</p>
+                      <p className="text-xs text-gray-400">
+                        {o.deliveredAt ? new Date(o.deliveredAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5 truncate">{o.cart.join(", ")}</p>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span className="text-xs font-bold" style={{ color: theme.accent }}>{o.total}</span>
+                      <span className="text-[10px] bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">✓ Delivered</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </main>

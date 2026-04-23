@@ -1,72 +1,164 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { Pencil, Check, X, ChevronRight, Bell, LogOut, Lock, MapPin, BookOpen, User } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Pencil, Check, X, ChevronRight, Bell, LogOut, Lock, MapPin, BookOpen, User, ShoppingBag } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import { getCollegeTheme } from "@/lib/campus";
 
 const COLLEGES = ["Revelle College","Muir College","Marshall College","Warren College","Roosevelt College","Sixth College","Seventh College","Eighth College"];
 const BUILDINGS = ["Tioga Hall","Tenaya Hall","Tahoe Hall","Shasta Hall","Anza Hall","De Anza Hall","Cuicacalli","Matthews","Rita Atkinson Residences","Mesa Nueva","Marshall Upper/Lower","Warren Apartments","Revelle Dorms"];
-
-type Field = { label: string; value: string; type?: string };
 
 function useEditable(initial: string) {
   const [value, setValue] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(initial);
-  const save = () => { setValue(draft); setEditing(false); };
+  const save = (onSave?: (v: string) => void) => { setValue(draft); setEditing(false); onSave?.(draft); };
   const cancel = () => { setDraft(value); setEditing(false); };
   const open = () => { setDraft(value); setEditing(true); };
-  return { value, draft, setDraft, editing, save, cancel, open };
+  const set = (v: string) => { setValue(v); setDraft(v); };
+  return { value, draft, setDraft, editing, save, cancel, open, set };
 }
 
 export default function ProfilePage() {
-  const firstName  = useEditable("Alex");
-  const lastName   = useEditable("Triton");
-  const phone      = useEditable("(619) 555-0100");
-  const username   = useEditable("triton_alex");
-  const email      = useEditable("atriton@ucsd.edu");
-  const building   = useEditable("Tioga Hall");
-  const room       = useEditable("214B");
-  const college    = useEditable("Sixth College");
-
+  const router = useRouter();
+  const firstName  = useEditable("");
+  const lastName   = useEditable("");
+  const phone      = useEditable("");
+  const username   = useEditable("");
+  const email      = useEditable("");
+  const building   = useEditable("");
+  const room       = useEditable("");
+  const college    = useEditable("");
   const [notifOrders, setNotifOrders]  = useState(true);
   const [notifPromos, setNotifPromos]  = useState(false);
   const [showPwModal, setShowPwModal]  = useState(false);
+  const [orderCount, setOrderCount] = useState(0);
+  const [totalSpent, setTotalSpent] = useState(0);
+  const [theme, setTheme] = useState(getCollegeTheme(null));
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const col = localStorage.getItem("user_college") ?? "";
+    setTheme(getCollegeTheme(col));
+
+    const fullName = localStorage.getItem("user_name") ?? "";
+    const parts = fullName.trim().split(" ");
+    firstName.set(parts[0] ?? "");
+    lastName.set(parts.slice(1).join(" ") ?? "");
+    email.set(localStorage.getItem("user_email") ?? "");
+    college.set(col);
+    building.set(localStorage.getItem("user_building") ?? "");
+    phone.set(localStorage.getItem("user_phone") ?? "");
+    username.set(localStorage.getItem("user_username") ?? "");
+    room.set(localStorage.getItem("user_room") ?? "");
+
+    try {
+      const history = JSON.parse(localStorage.getItem("student_history") ?? "[]");
+      const delivered = history.filter((o: { status: string }) => o.status === "delivered");
+      setOrderCount(delivered.length);
+      const spent = delivered.reduce((sum: number, o: { total: string }) => {
+        const n = parseFloat(o.total.replace("$", ""));
+        return sum + (isNaN(n) ? 0 : n);
+      }, 0);
+      setTotalSpent(spent);
+    } catch {}
+
+    setLoaded(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const saveField = (key: string, value: string) => {
+    localStorage.setItem(key, value);
+  };
+
+  const saveFullName = () => {
+    const full = `${firstName.value} ${lastName.value}`.trim();
+    localStorage.setItem("user_name", full);
+    localStorage.setItem("user_first", firstName.value);
+  };
+
+  const saveCollege = (val: string) => {
+    localStorage.setItem("user_college", val);
+    setTheme(getCollegeTheme(val));
+  };
+
+  const signOut = () => {
+    ["user_name","user_first","user_email","user_college","user_building","user_phone","user_username","user_room","dorm_dash_order_id"]
+      .forEach(k => localStorage.removeItem(k));
+    router.push("/");
+  };
+
+  const initials = `${firstName.value[0] ?? ""}${lastName.value[0] ?? ""}`.toUpperCase() || "?";
+
+  if (!loaded) return <div className="min-h-screen bg-[#F8FAFC]"/>;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24">
 
-      {/* Header */}
-      <div className="bg-[#003087] px-5 pt-14 pb-10 text-white text-center">
+      <div style={{ backgroundColor: theme.accent }} className="px-5 pt-14 pb-10 text-white text-center">
         <div className="relative inline-block mb-3">
-          <div className="w-20 h-20 bg-[#F5B700] rounded-full flex items-center justify-center text-[#003087] text-2xl font-black shadow-lg">
-            AT
+          <div className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-black shadow-lg" style={{ backgroundColor: theme.avatarBg, color: theme.avatarText }}>
+            {initials}
           </div>
-          <button className="absolute bottom-0 right-0 w-7 h-7 bg-white rounded-full flex items-center justify-center shadow-md">
-            <Pencil size={12} className="text-[#003087]"/>
-          </button>
         </div>
         <h1 className="text-xl font-black">{firstName.value} {lastName.value}</h1>
-        <p className="text-white/60 text-sm mt-0.5">{email.value}</p>
-        <span className="inline-block mt-2 bg-white/15 text-white/80 text-xs font-medium px-3 py-1 rounded-full">
-          {college.value}
-        </span>
+        <p className="text-white/60 text-sm mt-0.5">{email.value || "No email set"}</p>
+        {college.value && (
+          <span className="inline-block mt-2 bg-white/15 text-white/80 text-xs font-medium px-3 py-1 rounded-full">
+            {college.value}
+          </span>
+        )}
+
+        {/* Order stats */}
+        <div className="mt-4 flex justify-center gap-6 text-white">
+          <div>
+            <p className="text-xl font-black">{orderCount}</p>
+            <p className="text-white/50 text-xs">Orders</p>
+          </div>
+          <div className="w-px bg-white/20"/>
+          <div>
+            <p className="text-xl font-black">${totalSpent.toFixed(2)}</p>
+            <p className="text-white/50 text-xs">Total Spent</p>
+          </div>
+          <div className="w-px bg-white/20"/>
+          <div>
+            <p className="text-xl font-black">{orderCount > 0 ? "4.9" : "—"}</p>
+            <p className="text-white/50 text-xs">Rating</p>
+          </div>
+        </div>
       </div>
 
       <main className="max-w-md mx-auto px-5 -mt-3 flex flex-col gap-4 pb-4">
 
+        {/* Quick link to orders */}
+        <button
+          onClick={() => router.push("/orders")}
+          className="w-full flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3.5 hover:shadow-md transition"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${theme.accent}15` }}>
+              <ShoppingBag size={16} style={{ color: theme.accent }}/>
+            </div>
+            <div className="text-left">
+              <p className="font-bold text-gray-900 text-sm">Order History</p>
+              <p className="text-xs text-gray-400">{orderCount} delivered order{orderCount !== 1 ? "s" : ""}</p>
+            </div>
+          </div>
+          <ChevronRight size={16} className="text-gray-400"/>
+        </button>
+
         {/* Personal Info */}
-        <Card icon={<User size={14}/>} title="Personal Info">
-          <EditRow label="First Name" field={firstName} />
-          <EditRow label="Last Name"  field={lastName}  />
-          <EditRow label="Phone"      field={phone} type="tel" />
+        <Card icon={<User size={14}/>} title="Personal Info" theme={theme.accent}>
+          <EditRow label="First Name" field={firstName} onSave={saveFullName} />
+          <EditRow label="Last Name"  field={lastName}  onSave={saveFullName} />
+          <EditRow label="Phone" field={phone} type="tel" onSave={(v) => saveField("user_phone", v)} />
         </Card>
 
         {/* Account */}
-        <Card icon={<Lock size={14}/>} title="Account">
-          <EditRow label="Username" field={username} />
-          <EditRow label="Email"    field={email}    type="email" />
+        <Card icon={<Lock size={14}/>} title="Account" theme={theme.accent}>
+          <EditRow label="Username" field={username} onSave={(v) => saveField("user_username", v)} />
+          <EditRow label="Email"    field={email}    type="email" onSave={(v) => saveField("user_email", v)} />
           <button
             onClick={() => setShowPwModal(true)}
             className="w-full flex items-center justify-between py-3 border-t border-gray-100 mt-1"
@@ -77,7 +169,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* Delivery Location */}
-        <Card icon={<MapPin size={14}/>} title="Delivery Location">
+        <Card icon={<MapPin size={14}/>} title="Delivery Location" theme={theme.accent}>
           <div className="flex flex-col gap-1 py-2">
             <p className="text-xs font-semibold text-gray-400">Building</p>
             {building.editing ? (
@@ -85,21 +177,22 @@ export default function ProfilePage() {
                 value={building.draft}
                 options={BUILDINGS}
                 onChange={building.setDraft}
-                onSave={building.save}
+                onSave={() => { building.save((v) => saveField("user_building", v)); }}
                 onCancel={building.cancel}
+                accent={theme.accent}
               />
             ) : (
-              <EditableRow value={building.value} onEdit={building.open} />
+              <EditableRow value={building.value || "Not set"} onEdit={building.open} accent={theme.accent} />
             )}
           </div>
           <div className="flex flex-col gap-1 py-2 border-t border-gray-100">
             <p className="text-xs font-semibold text-gray-400">Room Number</p>
-            <EditRow label="" field={room} compact />
+            <EditRow label="" field={room} compact onSave={(v) => saveField("user_room", v)} />
           </div>
         </Card>
 
         {/* UCSD Info */}
-        <Card icon={<BookOpen size={14}/>} title="UCSD Info">
+        <Card icon={<BookOpen size={14}/>} title="UCSD Info" theme={theme.accent}>
           <div className="flex flex-col gap-1 py-2">
             <p className="text-xs font-semibold text-gray-400">College</p>
             {college.editing ? (
@@ -107,34 +200,33 @@ export default function ProfilePage() {
                 value={college.draft}
                 options={COLLEGES}
                 onChange={college.setDraft}
-                onSave={college.save}
+                onSave={() => { college.save(saveCollege); }}
                 onCancel={college.cancel}
+                accent={theme.accent}
               />
             ) : (
-              <EditableRow value={college.value} onEdit={college.open} />
+              <EditableRow value={college.value || "Not set"} onEdit={college.open} accent={theme.accent} />
             )}
           </div>
         </Card>
 
         {/* Notifications */}
-        <Card icon={<Bell size={14}/>} title="Notifications">
-          <ToggleRow label="Order updates" sub="Delivery status & confirmations" value={notifOrders} onChange={setNotifOrders} />
-          <ToggleRow label="Promotions"    sub="Deals and dining hall specials"  value={notifPromos} onChange={setNotifPromos} />
+        <Card icon={<Bell size={14}/>} title="Notifications" theme={theme.accent}>
+          <ToggleRow label="Order updates" sub="Delivery status & confirmations" value={notifOrders} onChange={setNotifOrders} accent={theme.accent} />
+          <ToggleRow label="Promotions"    sub="Deals and dining hall specials"  value={notifPromos} onChange={setNotifPromos} accent={theme.accent} />
         </Card>
 
-        {/* Sign Out */}
-        <Link
-          href="/"
+        <button
+          onClick={signOut}
           className="w-full flex items-center justify-center gap-2 bg-white border-2 border-red-200 text-red-500 font-bold py-4 rounded-2xl shadow-sm hover:bg-red-50 transition active:scale-[0.98]"
         >
           <LogOut size={16}/> Sign Out
-        </Link>
+        </button>
 
       </main>
 
       <BottomNav />
 
-      {/* Change Password Modal */}
       {showPwModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center" onClick={() => setShowPwModal(false)}>
           <div className="bg-white w-full max-w-md rounded-t-3xl p-6 pb-10 animate-slide-up" onClick={e => e.stopPropagation()}>
@@ -149,7 +241,8 @@ export default function ProfilePage() {
               ))}
               <button
                 onClick={() => setShowPwModal(false)}
-                className="mt-2 w-full bg-[#003087] text-white font-bold py-3.5 rounded-2xl hover:bg-[#002060] transition"
+                className="mt-2 w-full text-white font-bold py-3.5 rounded-2xl hover:opacity-90 transition"
+                style={{ backgroundColor: theme.accent }}
               >
                 Update Password
               </button>
@@ -161,13 +254,11 @@ export default function ProfilePage() {
   );
 }
 
-/* ── Sub-components ── */
-
-function Card({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+function Card({ icon, title, children, theme }: { icon: React.ReactNode; title: string; children: React.ReactNode; theme: string }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50/80">
-        <span className="text-[#003087]">{icon}</span>
+        <span style={{ color: theme }}>{icon}</span>
         <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">{title}</span>
       </div>
       <div className="px-4 divide-y divide-gray-100">{children}</div>
@@ -175,11 +266,12 @@ function Card({ icon, title, children }: { icon: React.ReactNode; title: string;
   );
 }
 
-function EditRow({ label, field, type, compact }: {
+function EditRow({ label, field, type, compact, onSave }: {
   label: string;
   field: ReturnType<typeof useEditable>;
   type?: string;
   compact?: boolean;
+  onSave?: (v: string) => void;
 }) {
   return (
     <div className={`${compact ? "" : "py-3"}`}>
@@ -193,7 +285,7 @@ function EditRow({ label, field, type, compact }: {
             onChange={e => field.setDraft(e.target.value)}
             className={`flex-1 ${inputCls}`}
           />
-          <button onClick={field.save} className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <button onClick={() => field.save(onSave)} className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
             <Check size={14} className="text-white"/>
           </button>
           <button onClick={field.cancel} className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
@@ -201,27 +293,28 @@ function EditRow({ label, field, type, compact }: {
           </button>
         </div>
       ) : (
-        <EditableRow value={field.value} onEdit={field.open} />
+        <EditableRow value={field.value || "Not set"} onEdit={field.open} accent="#003087" />
       )}
     </div>
   );
 }
 
-function EditableRow({ value, onEdit }: { value: string; onEdit: () => void }) {
+function EditableRow({ value, onEdit, accent }: { value: string; onEdit: () => void; accent: string }) {
   return (
     <div className="flex items-center justify-between py-0.5">
       <span className="text-sm font-semibold text-gray-800">{value}</span>
-      <button onClick={onEdit} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center hover:bg-[#003087]/10 transition ml-2 flex-shrink-0">
-        <Pencil size={12} className="text-[#003087]"/>
+      <button onClick={onEdit} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition ml-2 flex-shrink-0">
+        <Pencil size={12} style={{ color: accent }}/>
       </button>
     </div>
   );
 }
 
-function SelectEdit({ value, options, onChange, onSave, onCancel }: {
+function SelectEdit({ value, options, onChange, onSave, onCancel, accent }: {
   value: string; options: string[];
   onChange: (v: string) => void;
   onSave: () => void; onCancel: () => void;
+  accent: string;
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -238,8 +331,8 @@ function SelectEdit({ value, options, onChange, onSave, onCancel }: {
   );
 }
 
-function ToggleRow({ label, sub, value, onChange }: {
-  label: string; sub: string; value: boolean; onChange: (v: boolean) => void;
+function ToggleRow({ label, sub, value, onChange, accent }: {
+  label: string; sub: string; value: boolean; onChange: (v: boolean) => void; accent: string;
 }) {
   return (
     <div className="flex items-center justify-between py-3">
@@ -249,7 +342,8 @@ function ToggleRow({ label, sub, value, onChange }: {
       </div>
       <button
         onClick={() => onChange(!value)}
-        className={`w-12 h-6 rounded-full transition-all duration-300 flex-shrink-0 relative ${value ? "bg-[#003087]" : "bg-gray-200"}`}
+        className="w-12 h-6 rounded-full transition-all duration-300 flex-shrink-0 relative"
+        style={{ backgroundColor: value ? accent : "#E5E7EB" }}
       >
         <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all duration-300 ${value ? "left-6" : "left-0.5"}`}/>
       </button>
