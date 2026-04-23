@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, CheckCircle, X, Loader2, Minus, Plus, Upload, AlertCircle, MapPin } from "lucide-react";
+import { ChevronRight, CheckCircle, X, Loader2, Minus, Plus, Upload, AlertCircle, MapPin, Clock } from "lucide-react";
 import { BUILDING_COLLEGE, BUILDING_COORDS } from "@/lib/orderStore";
+import { isHallOpen, hallOpenLabel } from "@/lib/campus";
 
 // UCSD campus bounding box
 const UCSD = { swLat: 32.8685, swLng: -117.2440, neLat: 32.8955, neLng: -117.2115 };
@@ -183,6 +184,8 @@ export default function OrderPage() {
   }, []);
   const [toDoor, setToDoor] = useState(false);
   const [room, setRoom] = useState("");
+  const [scheduleMode, setScheduleMode] = useState(false);
+  const [scheduledFor, setScheduledFor] = useState("");
 
   const menu = MENUS[hall] ?? [];
   const allItems = menu.flatMap((g) => g.items);
@@ -242,27 +245,51 @@ export default function OrderPage() {
     const hallData = HALLS.find((h) => h.id === hall);
     const doorFee  = toDoor ? 2.0 : 0;
     const destCoords = BUILDING_COORDS[building] ?? { lat: 32.8800, lng: -117.2340 };
+    const cartItems = Object.entries(cart).map(([name, qty]) => `${qty}× ${name}`);
+    const total = `$${(cartTotal * 1.0775 + 1.5 + doorFee).toFixed(2)}`;
     const payload = {
       hall:          hallData?.name    ?? "",
       hallEmoji:     hallData?.emoji   ?? "🍽",
       hallCollege:   hallData?.college ?? "",
       hallLat:       hallData?.lat     ?? 32.8800,
       hallLng:       hallData?.lng     ?? -117.2340,
-      cart:          Object.entries(cart).map(([name, qty]) => `${qty}× ${name}`),
+      cart:          cartItems,
       pid_last4:     extracted?.pid_last4   ?? null,
       pickup_time:   extracted?.pickup_time ?? null,
       order_number:  extracted?.order_number ?? null,
-      total:         `$${(cartTotal * 1.0775 + 1.5 + doorFee).toFixed(2)}`,
+      total,
       building,
       deliveryCollege: BUILDING_COLLEGE[building] ?? "",
       destLat:       destCoords.lat,
       destLng:       destCoords.lng,
       room:          toDoor ? room.trim() : null,
       toDoor,
+      scheduledFor:  scheduleMode && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
     };
     const res  = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const data = await res.json();
     localStorage.setItem("dorm_dash_order_id", data.id);
+
+    // Persist to student history
+    try {
+      const entry = {
+        id: data.id,
+        hall: hallData?.name ?? "",
+        hallEmoji: hallData?.emoji ?? "🍽",
+        hallCollege: hallData?.college ?? "",
+        cart: cartItems,
+        total,
+        building,
+        room: toDoor ? room.trim() : null,
+        toDoor,
+        status: "pending",
+        placedAt: new Date().toISOString(),
+        scheduledFor: scheduleMode && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
+      };
+      const prev = JSON.parse(localStorage.getItem("student_history") ?? "[]");
+      localStorage.setItem("student_history", JSON.stringify([entry, ...prev]));
+    } catch {}
+
     router.push("/home");
   };
 
@@ -297,7 +324,10 @@ export default function OrderPage() {
         <section>
           <Step n={1} label="Which dining hall?" />
           <div className="grid grid-cols-2 gap-2.5 mt-3">
-            {HALLS.map((d) => (
+            {HALLS.map((d) => {
+              const open = isHallOpen(d.id);
+              const openLabel = hallOpenLabel(d.id);
+              return (
               <button
                 key={d.id}
                 onClick={() => { setHall(d.id); setCart({}); }}
@@ -305,14 +335,21 @@ export default function OrderPage() {
                   hall === d.id
                     ? "border-[#003087] bg-[#003087]/5 shadow-md"
                     : `${d.bg} ${d.border} hover:shadow-sm`
-                }`}
+                } ${!open ? "opacity-60" : ""}`}
               >
-                <span className="text-3xl mb-2">{d.emoji}</span>
+                <div className="w-full flex items-start justify-between mb-2">
+                  <span className="text-3xl">{d.emoji}</span>
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${open ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"}`}>
+                    {open ? "Open" : "Closed"}
+                  </span>
+                </div>
                 <p className="font-bold text-sm text-gray-800 leading-tight">{d.name}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{d.college}</p>
+                <p className={`text-[10px] mt-0.5 font-semibold ${open ? "text-green-500" : "text-gray-400"}`}>{openLabel}</p>
                 {hall === d.id && <CheckCircle size={14} className="text-[#003087] mt-1.5 self-end" />}
               </button>
-            ))}
+            );})}
+
           </div>
         </section>
 
@@ -513,6 +550,48 @@ export default function OrderPage() {
                   value={room}
                   onChange={e => setRoom(e.target.value)}
                 />
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── Step 6: Schedule ── */}
+        <section>
+          <Step n={6} label="When do you want delivery?" />
+          <div className="mt-3 flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setScheduleMode(false)}
+                className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-bold transition ${
+                  !scheduleMode ? "border-[#003087] bg-[#003087]/5 text-[#003087]" : "border-gray-200 bg-white text-gray-500"
+                }`}
+              >
+                ⚡ ASAP
+              </button>
+              <button
+                onClick={() => setScheduleMode(true)}
+                className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-bold transition ${
+                  scheduleMode ? "border-[#F5B700] bg-[#F5B700]/10 text-[#003087]" : "border-gray-200 bg-white text-gray-500"
+                }`}
+              >
+                <Clock size={15}/> Schedule
+              </button>
+            </div>
+            {scheduleMode && (
+              <div className="animate-fade-in flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Delivery Time</label>
+                <input
+                  type="datetime-local"
+                  className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition"
+                  value={scheduledFor}
+                  onChange={e => setScheduledFor(e.target.value)}
+                  min={new Date(Date.now() + 15 * 60 * 1000).toISOString().slice(0, 16)}
+                />
+                {scheduledFor && (
+                  <p className="text-xs text-[#003087] font-semibold">
+                    Order will appear to Dashers at the scheduled time
+                  </p>
+                )}
               </div>
             )}
           </div>

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Bell, Star, DollarSign, Package, Clock } from "lucide-react";
 import type { Order } from "@/lib/orderStore";
+import { getCollegeTheme } from "@/lib/campus";
 
 type DasherDelivery = {
   id: string;
@@ -112,6 +113,7 @@ export default function DasherHomePage() {
   };
 
   const firstName = dasherName.split(" ")[0];
+  const theme = getCollegeTheme(dasherCollege);
 
   // Computed stats from real history
   const todayStr = new Date().toDateString();
@@ -125,7 +127,7 @@ export default function DasherHomePage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col pb-8">
 
-      <div className="bg-[#003087] px-5 pt-14 pb-6 text-white">
+      <div style={{ backgroundColor: theme.accent }} className="px-5 pt-14 pb-6 text-white">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <div>
             <p className="text-white/60 text-sm">Hey Dasher 👋</p>
@@ -136,7 +138,7 @@ export default function DasherHomePage() {
             <button className="relative w-10 h-10 bg-white/15 rounded-full flex items-center justify-center text-white">
               <Bell size={18}/>
             </button>
-            <div className="w-10 h-10 bg-[#F5B700] rounded-full flex items-center justify-center text-[#003087] font-black text-sm">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm" style={{ backgroundColor: theme.avatarBg, color: theme.avatarText }}>
               {dasherName.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase() || "D"}
             </div>
           </div>
@@ -307,6 +309,23 @@ export default function DasherHomePage() {
               {incomingOrder.toDoor && (
                 <div className="bg-[#003087]/5 rounded-xl px-3 py-2 text-xs text-[#003087] font-semibold">
                   🚪 Door delivery — only you ({dasherCollege}) can take this order
+                </div>
+              )}
+              {incomingOrder.batched && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex items-center gap-2">
+                  <span className="text-base">📦</span>
+                  <div>
+                    <p className="text-xs font-black text-amber-800">Smart Batch — Same Building!</p>
+                    <p className="text-[11px] text-amber-600">Another order is already heading to {incomingOrder.building}. Add this one to your run!</p>
+                  </div>
+                </div>
+              )}
+              {incomingOrder.scheduledFor && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 flex items-center gap-2">
+                  <span className="text-base">🕐</span>
+                  <p className="text-xs font-semibold text-blue-700">
+                    Scheduled for {new Date(incomingOrder.scheduledFor).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </p>
                 </div>
               )}
             </div>

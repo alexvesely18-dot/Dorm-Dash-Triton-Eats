@@ -6,13 +6,18 @@ import Link from "next/link";
 import { Bell, Plus, ChevronRight } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import type { Order } from "@/lib/orderStore";
+import { etaMinutes, isHallOpen, hallOpenLabel, getCollegeTheme } from "@/lib/campus";
 
 const LiveMap = dynamic(() => import("@/components/LiveMap"), { ssr: false, loading: () => <div className="w-full h-full bg-[#E8F0E4] animate-pulse rounded-2xl"/> });
 
-const PAST_ORDERS = [
-  { id: 1, hall: "64 Degrees", items: "Grilled Chicken Bowl, Garden Salad, Water", date: "Apr 21", total: "$21.79", emoji: "🍳", bg: "bg-orange-100" },
-  { id: 2, hall: "Pines",       items: "Tacos ×2, Sparkling Water",                date: "Apr 18", total: "$16.50", emoji: "🌮", bg: "bg-green-100"  },
-  { id: 3, hall: "Sixth Market",items: "Buddha Bowl, Kombucha",                    date: "Apr 15", total: "$14.25", emoji: "🥗", bg: "bg-blue-100"   },
+const ALL_HALLS = [
+  { id: "64deg",    name: "64 Degrees",    emoji: "🍳" },
+  { id: "pines",    name: "Pines",          emoji: "🌮" },
+  { id: "sixth",    name: "Sixth Market",   emoji: "🥗" },
+  { id: "ventanas", name: "Café Ventanas",  emoji: "☕" },
+  { id: "canyon",   name: "Canyon Vista",   emoji: "🌯" },
+  { id: "ovt",      name: "OceanView",      emoji: "🍜" },
+  { id: "bistro",   name: "The Bistro",     emoji: "🥪" },
 ];
 
 const STATUS_COLOR: Record<string, string> = {
@@ -22,19 +27,42 @@ const STATUS_COLOR: Record<string, string> = {
   delivered: "bg-green-400",
 };
 
+function timeOfDayGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export default function HomePage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [userName, setUserName] = useState("Triton");
+  const [userInitials, setUserInitials] = useState("AT");
+  const [theme, setTheme] = useState(getCollegeTheme(null));
+  const [recentOrders, setRecentOrders] = useState<{ id: string; hall: string; hallEmoji: string; cart: string[]; total: string; deliveredAt?: string }[]>([]);
 
   useEffect(() => {
     const id = localStorage.getItem("dorm_dash_order_id");
     setOrderId(id);
+    const name = localStorage.getItem("user_first") ?? localStorage.getItem("user_name") ?? "Triton";
+    setUserName(name.split(" ")[0]);
+    const full = localStorage.getItem("user_name") ?? "Alex Triton";
+    const parts = full.trim().split(" ");
+    setUserInitials(((parts[0]?.[0] ?? "A") + (parts[1]?.[0] ?? "T")).toUpperCase());
+    const college = localStorage.getItem("user_college");
+    setTheme(getCollegeTheme(college));
+
+    try {
+      const history = JSON.parse(localStorage.getItem("student_history") ?? "[]");
+      const delivered = history.filter((o: { status: string }) => o.status === "delivered").slice(0, 3);
+      setRecentOrders(delivered);
+    } catch {}
   }, []);
 
   useEffect(() => {
     if (!orderId) return;
     let alive = true;
-
     const poll = async () => {
       try {
         const res = await fetch(`/api/orders/${orderId}`);
@@ -43,10 +71,28 @@ export default function HomePage() {
         if (alive) setOrder(data.order);
         if (data.order?.status === "delivered") {
           localStorage.removeItem("dorm_dash_order_id");
+          // Mark matching history entry as delivered
+          try {
+            const history = JSON.parse(localStorage.getItem("student_history") ?? "[]");
+            const updated = history.map((e: Record<string, unknown>) =>
+              e.id === data.order.id
+                ? { ...e, status: "delivered", dasherName: data.order.dasherName, deliveredAt: new Date().toISOString() }
+                : e
+            );
+            localStorage.setItem("student_history", JSON.stringify(updated));
+          } catch {}
+        } else if (data.order && ["claimed","picked_up"].includes(data.order.status)) {
+          // Keep status in sync for the orders page
+          try {
+            const history = JSON.parse(localStorage.getItem("student_history") ?? "[]");
+            const updated = history.map((e: Record<string, unknown>) =>
+              e.id === data.order.id ? { ...e, status: data.order.status, dasherName: data.order.dasherName } : e
+            );
+            localStorage.setItem("student_history", JSON.stringify(updated));
+          } catch {}
         }
       } catch { /* retry */ }
     };
-
     poll();
     const interval = setInterval(poll, 3000);
     return () => { alive = false; clearInterval(interval); };
@@ -54,21 +100,31 @@ export default function HomePage() {
 
   const isActive = order && order.status !== "delivered";
 
+  const openHalls = ALL_HALLS.filter(h => isHallOpen(h.id));
+
+  const showEta =
+    order &&
+    (order.status === "claimed" || order.status === "picked_up") &&
+    order.dasherLat && order.dasherLng &&
+    order.destLat && order.destLng;
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col pb-24">
 
-      <div className="bg-[#003087] px-5 pt-14 pb-6">
+      <div style={{ backgroundColor: theme.accent }} className="px-5 pt-14 pb-6">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <div>
-            <p className="text-white/60 text-sm">Good afternoon 👋</p>
-            <h1 className="text-white text-2xl font-black mt-0.5">Hey, Triton!</h1>
+            <p className="text-white/60 text-sm">{timeOfDayGreeting()} 👋</p>
+            <h1 className="text-white text-2xl font-black mt-0.5">Hey, {userName}!</h1>
           </div>
           <div className="flex items-center gap-3">
             <button className="relative w-10 h-10 bg-white/15 rounded-full flex items-center justify-center text-white">
               <Bell size={18}/>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#F5B700] rounded-full"/>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ backgroundColor: theme.gold }}/>
             </button>
-            <div className="w-10 h-10 bg-[#F5B700] rounded-full flex items-center justify-center text-[#003087] font-black text-sm">AT</div>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm" style={{ backgroundColor: theme.avatarBg, color: theme.avatarText }}>
+              {userInitials}
+            </div>
           </div>
         </div>
       </div>
@@ -82,33 +138,33 @@ export default function HomePage() {
               <div className="flex-1 min-w-0 pr-3">
                 <div className="flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full animate-pulse ${STATUS_COLOR[order.status]}`}/>
-                  <span className="text-xs font-bold text-[#003087] uppercase tracking-wide">Active Order</span>
+                  <span className="text-xs font-bold uppercase tracking-wide" style={{ color: theme.accent }}>Active Order</span>
                 </div>
                 <p className="font-bold text-gray-900 mt-0.5 truncate">
                   {order.status === "pending"   && "Looking for a Dasher…"}
-                  {order.status === "claimed"   && `${order.dasherName} is picking up your order ${order.dasherTransport === "scooter" ? "🛵" : "🚲"}`}
+                  {order.status === "claimed"   && `${order.dasherName} is picking up ${order.dasherTransport === "scooter" ? "🛵" : "🚲"}`}
                   {order.status === "picked_up" && `${order.dasherName} is on the way! ${order.dasherTransport === "scooter" ? "🛵" : "🚲"}`}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">{order.hall} → {order.building}{order.room ? ` · Rm ${order.room}` : ""}</p>
               </div>
               {order.status !== "pending" && (
-                <Link href="/chat" className="bg-[#003087] text-white text-xs font-bold px-3 py-2 rounded-xl flex-shrink-0">Chat</Link>
+                <Link href="/chat" className="text-white text-xs font-bold px-3 py-2 rounded-xl flex-shrink-0" style={{ backgroundColor: theme.accent }}>Chat</Link>
               )}
             </div>
 
             {order.status === "pending" && (
-              <div className="mx-4 mb-4 mt-2 bg-[#003087]/5 rounded-2xl px-4 py-4 flex items-center gap-3">
+              <div className="mx-4 mb-4 mt-2 rounded-2xl px-4 py-4 flex items-center gap-3" style={{ backgroundColor: `${theme.accent}10` }}>
                 <div className="flex gap-1.5">
                   {[0,1,2].map((i) => (
-                    <span key={i} className="w-2 h-2 bg-[#003087]/40 rounded-full animate-bounce" style={{ animationDelay: `${i*0.15}s` }}/>
+                    <span key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: `${theme.accent}60`, animationDelay: `${i*0.15}s` }}/>
                   ))}
                 </div>
-                <p className="text-sm text-[#003087]/70 font-medium">Finding the nearest Dasher…</p>
+                <p className="text-sm font-medium" style={{ color: `${theme.accent}B0` }}>Finding the nearest Dasher…</p>
               </div>
             )}
 
             {(order.status === "claimed" || order.status === "picked_up") && (
-              <div className="mx-4 mt-2 rounded-2xl overflow-hidden border border-gray-100" style={{ height: 200 }}>
+              <div className="mx-4 mt-2 rounded-2xl overflow-hidden border border-gray-100 relative" style={{ height: 200 }}>
                 <LiveMap
                   hallLat={order.hallLat}
                   hallLng={order.hallLng}
@@ -120,6 +176,17 @@ export default function HomePage() {
                   dasherLat={order.dasherLat}
                   dasherLng={order.dasherLng}
                 />
+                {showEta && (
+                  <div className="absolute bottom-3 left-3 z-[1000] bg-white rounded-2xl px-3 py-2 shadow-lg flex items-center gap-2 border border-gray-100">
+                    <span className="text-base">{order.dasherTransport === "scooter" ? "🛵" : "🚲"}</span>
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase leading-none">ETA</p>
+                      <p className="text-sm font-black leading-none mt-0.5" style={{ color: theme.accent }}>
+                        ~{etaMinutes(order.dasherLat!, order.dasherLng!, order.destLat, order.destLng, order.dasherTransport ?? "bike")} min
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -130,8 +197,11 @@ export default function HomePage() {
               </div>
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#003087] to-[#F5B700] rounded-full transition-all duration-1000"
-                  style={{ width: order.status === "pending" ? "10%" : order.status === "claimed" ? "40%" : "75%" }}
+                  className="h-full rounded-full transition-all duration-1000"
+                  style={{
+                    background: `linear-gradient(to right, ${theme.accent}, ${theme.gold})`,
+                    width: order.status === "pending" ? "10%" : order.status === "claimed" ? "40%" : "75%",
+                  }}
                 />
               </div>
             </div>
@@ -147,62 +217,81 @@ export default function HomePage() {
         {/* New Order */}
         <Link
           href="/order"
-          className="mt-4 w-full flex items-center justify-between bg-[#F5B700] text-[#003087] font-bold px-5 py-4 rounded-2xl shadow-md hover:bg-[#e0a800] transition active:scale-[0.98]"
+          className="mt-4 w-full flex items-center justify-between font-bold px-5 py-4 rounded-2xl shadow-md hover:opacity-90 transition active:scale-[0.98]"
+          style={{ backgroundColor: theme.gold, color: theme.accent }}
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#003087]/15 rounded-full flex items-center justify-center"><Plus size={18}/></div>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: `${theme.accent}25` }}>
+              <Plus size={18}/>
+            </div>
             <div>
               <p className="font-black text-base">New Order</p>
-              <p className="text-[#003087]/60 text-xs font-medium">Order from any dining hall</p>
+              <p className="text-xs font-medium opacity-60">Order from any dining hall</p>
             </div>
           </div>
           <ChevronRight size={20}/>
         </Link>
 
-        {/* Dining hall chips */}
+        {/* Dining hall chips with real open/closed status */}
         <div className="mt-5">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Dining Halls Open Now</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+            Dining Halls — {openHalls.length} Open Now
+          </p>
           <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {[
-              { name: "64 Degrees",  emoji: "🍳", wait: "15 min" },
-              { name: "Pines",       emoji: "🌮", wait: "10 min" },
-              { name: "Sixth Market",emoji: "🥗", wait: "20 min" },
-              { name: "Café Ventanas",emoji:"☕", wait: "8 min"  },
-              { name: "Canyon Vista",emoji: "🍜", wait: "25 min" },
-            ].map((d) => (
-              <Link key={d.name} href="/order" className="flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5 flex flex-col items-center gap-1 min-w-[80px] hover:shadow-md transition">
-                <span className="text-2xl">{d.emoji}</span>
-                <p className="text-xs font-semibold text-gray-700 text-center leading-tight">{d.name}</p>
-                <p className="text-[10px] text-gray-400">{d.wait}</p>
-              </Link>
-            ))}
+            {ALL_HALLS.map((d) => {
+              const open = isHallOpen(d.id);
+              const label = hallOpenLabel(d.id);
+              return (
+                <Link
+                  key={d.id}
+                  href="/order"
+                  className={`flex-shrink-0 rounded-2xl border shadow-sm px-3 py-2.5 flex flex-col items-center gap-1 min-w-[80px] hover:shadow-md transition ${
+                    open ? "bg-white border-gray-100" : "bg-gray-50 border-gray-200 opacity-60"
+                  }`}
+                >
+                  <span className="text-2xl">{d.emoji}</span>
+                  <p className="text-xs font-semibold text-gray-700 text-center leading-tight">{d.name}</p>
+                  <p className={`text-[10px] font-semibold ${open ? "text-green-500" : "text-gray-400"}`}>{label}</p>
+                </Link>
+              );
+            })}
           </div>
         </div>
 
-        {/* Past Orders */}
+        {/* Past Orders — real from localStorage */}
         <div className="mt-6">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Past Orders</p>
-            <button className="text-xs font-semibold text-[#003087]">See all</button>
+            <Link href="/orders" className="text-xs font-semibold" style={{ color: theme.accent }}>See all</Link>
           </div>
-          <div className="flex flex-col gap-3">
-            {PAST_ORDERS.map((o) => (
-              <div key={o.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-                <div className={`w-12 h-12 ${o.bg} rounded-xl flex items-center justify-center text-2xl flex-shrink-0`}>{o.emoji}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-sm text-gray-900">{o.hall}</p>
-                    <p className="text-xs text-gray-400">{o.date}</p>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-0.5 truncate">{o.items}</p>
-                  <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-xs font-bold text-[#003087]">{o.total}</span>
-                    <span className="text-[10px] bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">✓ Delivered</span>
+          {recentOrders.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center">
+              <p className="text-2xl mb-2">🍽</p>
+              <p className="text-sm font-bold text-gray-600">No orders yet</p>
+              <p className="text-xs text-gray-400 mt-1">Your delivered orders will appear here</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {recentOrders.map((o) => (
+                <div key={o.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">{o.hallEmoji}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-sm text-gray-900">{o.hall}</p>
+                      <p className="text-xs text-gray-400">
+                        {o.deliveredAt ? new Date(o.deliveredAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5 truncate">{o.cart.join(", ")}</p>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span className="text-xs font-bold" style={{ color: theme.accent }}>{o.total}</span>
+                      <span className="text-[10px] bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">✓ Delivered</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </main>
@@ -211,4 +300,3 @@ export default function HomePage() {
     </div>
   );
 }
-

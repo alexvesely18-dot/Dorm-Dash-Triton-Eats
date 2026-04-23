@@ -250,7 +250,7 @@ export default function AdminDashboard() {
                       <div className="grid grid-cols-2 gap-2">
                         {[
                           { label: "Order #",       value: order.order_number },
-                          { label: "Total",         value: order.total },
+                          { label: "Total",         value: `$${Number(order.total).toFixed(2)}` },
                           { label: "Dining Hall",   value: order.hall },
                           { label: "College",       value: order.hallCollege },
                           { label: "Deliver to",    value: order.building },
