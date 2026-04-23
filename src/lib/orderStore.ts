@@ -25,6 +25,9 @@ export type Order = {
   dasherLng?: number;
   createdAt: string;
   claimedAt?: string;
+  scheduledFor?: string;
+  batched?: boolean;
+  batchDasher?: string;
 };
 
 // Map each building to the college that owns it — used to gate door-delivery claims

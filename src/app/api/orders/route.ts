@@ -4,12 +4,16 @@ import { orderStore, Order } from "@/lib/orderStore";
 // GET /api/orders?dasherCollege=Sixth+College
 // Returns pending orders visible to this dasher.
 // Door-delivery orders are only visible to dashers whose college matches (or when college is unset).
+// Scheduled orders are hidden until their scheduledFor time arrives.
 export async function GET(req: NextRequest) {
   const dasherCollege = req.nextUrl.searchParams.get("dasherCollege") ?? "";
+  const now = Date.now();
 
   const available = Array.from(orderStore.values()).filter((o) => {
     if (o.status !== "pending") return false;
     if (o.toDoor && dasherCollege && o.deliveryCollege !== dasherCollege) return false;
+    // Hide orders scheduled for the future
+    if (o.scheduledFor && new Date(o.scheduledFor).getTime() > now) return false;
     return true;
   });
 
@@ -40,8 +44,18 @@ export async function POST(req: NextRequest) {
     destLng:         Number(body.destLng       ?? -117.2340),
     room:            body.room != null ? String(body.room) : null,
     toDoor:          Boolean(body.toDoor),
+    scheduledFor:    body.scheduledFor != null ? String(body.scheduledFor) : undefined,
     createdAt:       new Date().toISOString(),
   };
+
+  // Detect smart batch: is there an active claimed order going to the same building?
+  const batchMatch = Array.from(orderStore.values()).find(
+    (o) => o.status === "claimed" && o.building === order.building && o.dasherName
+  );
+  if (batchMatch) {
+    order.batched = true;
+    order.batchDasher = batchMatch.dasherName;
+  }
 
   orderStore.set(id, order);
   return NextResponse.json({ id, order });
