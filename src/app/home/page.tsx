@@ -131,6 +131,15 @@ export default function HomePage() {
 
       <main className="flex-1 max-w-md mx-auto w-full px-5 -mt-1">
 
+        {/* Active Order — loading skeleton while first poll is in-flight */}
+        {orderId && !order && (
+          <div className="mt-5 bg-white rounded-3xl shadow-lg border border-gray-100 p-5 animate-pulse">
+            <div className="h-3 bg-gray-100 rounded-full w-24 mb-3"/>
+            <div className="h-5 bg-gray-100 rounded-full w-48 mb-2"/>
+            <div className="h-3 bg-gray-100 rounded-full w-36"/>
+          </div>
+        )}
+
         {/* Active Order */}
         {isActive ? (
           <div className="mt-5 bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
@@ -153,13 +162,23 @@ export default function HomePage() {
             </div>
 
             {order.status === "pending" && (
-              <div className="mx-4 mb-4 mt-2 rounded-2xl px-4 py-4 flex items-center gap-3" style={{ backgroundColor: `${theme.accent}10` }}>
-                <div className="flex gap-1.5">
-                  {[0,1,2].map((i) => (
-                    <span key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: `${theme.accent}60`, animationDelay: `${i*0.15}s` }}/>
-                  ))}
+              <div className="mx-4 mb-4 mt-2 rounded-2xl px-4 py-3 flex flex-col gap-2.5" style={{ backgroundColor: `${theme.accent}10` }}>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1.5">
+                    {[0,1,2].map((i) => (
+                      <span key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: `${theme.accent}60`, animationDelay: `${i*0.15}s` }}/>
+                    ))}
+                  </div>
+                  <p className="text-sm font-medium" style={{ color: `${theme.accent}B0` }}>Finding the nearest Dasher…</p>
                 </div>
-                <p className="text-sm font-medium" style={{ color: `${theme.accent}B0` }}>Finding the nearest Dasher…</p>
+                <Link
+                  href="/dasher"
+                  className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-bold transition hover:opacity-80"
+                  style={{ backgroundColor: theme.accent, color: "#fff" }}
+                >
+                  <span>Are you a Dasher? Accept this order</span>
+                  <span className="text-lg">🛵</span>
+                </Link>
               </div>
             )}
 
