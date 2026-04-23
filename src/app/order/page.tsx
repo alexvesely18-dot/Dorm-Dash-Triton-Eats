@@ -220,6 +220,7 @@ export default function OrderPage() {
   const [scheduleMode, setScheduleMode] = useState(false);
   const [scheduledFor, setScheduledFor] = useState("");
   const [apiError, setApiError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const menu = MENUS[hall] ?? [];
   const allItems = menu.flatMap((g) => g.items);
@@ -276,6 +277,8 @@ export default function OrderPage() {
   const canSubmit = hall && cartCount > 0 && triton && building && (!toDoor || room.trim());
 
   const saveAndGo = async () => {
+    if (submitting) return;
+    setSubmitting(true);
     setApiError("");
     const hallData = HALLS.find((h) => h.id === hall);
     const destCoords = BUILDING_COORDS[building] ?? { lat: 32.8800, lng: -117.2340 };
@@ -310,37 +313,44 @@ export default function OrderPage() {
       scheduledFor:  scheduleMode && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
     };
 
-    const res = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    const data = await res.json();
-
-    if (!res.ok) {
-      setApiError(data.error ?? "Failed to place order");
-      return;
-    }
-
-    localStorage.setItem("dorm_dash_order_id", data.id);
-
-    // Persist to student history using the API's authoritative total
     try {
-      const entry = {
-        id: data.id,
-        hall: data.order.hall,
-        hallEmoji: hallData?.emoji ?? "🍽",
-        hallCollege: hallData?.college ?? "",
-        cart: cartStrings,
-        total: `$${Number(data.order.total).toFixed(2)}`,
-        building,
-        room: toDoor ? room.trim() : null,
-        toDoor,
-        status: "pending",
-        placedAt: new Date().toISOString(),
-        scheduledFor: scheduleMode && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
-      };
-      const prev = JSON.parse(localStorage.getItem("student_history") ?? "[]");
-      localStorage.setItem("student_history", JSON.stringify([entry, ...prev]));
-    } catch {}
+      const res = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const data = await res.json();
 
-    router.push("/home");
+      if (!res.ok) {
+        setApiError(data.error ?? "Failed to place order. Please try again.");
+        setSubmitting(false);
+        return;
+      }
+
+      localStorage.setItem("dorm_dash_order_id", data.id);
+
+      // Persist to student history using the API's authoritative total
+      try {
+        const entry = {
+          id: data.id,
+          hall: data.order?.hall ?? hallData?.name ?? "",
+          hallEmoji: hallData?.emoji ?? "🍽",
+          hallCollege: hallData?.college ?? "",
+          cart: cartStrings,
+          total: `$${Number(data.order?.total ?? 0).toFixed(2)}`,
+          building,
+          room: toDoor ? room.trim() : null,
+          toDoor,
+          status: "pending",
+          placedAt: new Date().toISOString(),
+          scheduledFor: scheduleMode && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
+        };
+        const prev = JSON.parse(localStorage.getItem("student_history") ?? "[]");
+        localStorage.setItem("student_history", JSON.stringify([entry, ...prev]));
+      } catch {}
+
+      router.push("/home");
+    } catch (err) {
+      setApiError("Network error — please check your connection and try again.");
+      setSubmitting(false);
+      console.error("Order submission failed:", err);
+    }
   };
 
   return (
@@ -653,15 +663,17 @@ export default function OrderPage() {
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#F8FAFC]/95 backdrop-blur border-t border-gray-100">
         <div className="max-w-md mx-auto">
           <button
-            onClick={() => { if (canSubmit) saveAndGo(); }}
-            disabled={!canSubmit || analyzing}
+            onClick={() => { if (canSubmit && !submitting) saveAndGo(); }}
+            disabled={!canSubmit || analyzing || submitting}
             className={`w-full flex items-center justify-center gap-2 font-bold py-4 rounded-2xl shadow-lg transition text-base ${
-              canSubmit
+              canSubmit && !submitting
                 ? "bg-[#F5B700] text-[#003087] hover:bg-[#e0a800] active:scale-[0.98]"
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
-            {analyzing ? <><Loader2 size={18} className="animate-spin"/> Analyzing…</> : <>Submit Order <ChevronRight size={18}/></>}
+            {submitting ? <><Loader2 size={18} className="animate-spin"/> Placing order…</> :
+             analyzing  ? <><Loader2 size={18} className="animate-spin"/> Analyzing…</> :
+             <>Submit Order <ChevronRight size={18}/></>}
           </button>
           {!canSubmit && !analyzing && (
             <p className="text-center text-xs text-gray-400 mt-2">
