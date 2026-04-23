@@ -1,46 +1,64 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CheckCircle, MapPin, Package } from "lucide-react";
-
-type Order = {
-  hall: string;
-  college: string;
-  emoji: string;
-  cart: string[];
-  pid_last4: string | null;
-  pickup_time: string | null;
-  order_number: string | null;
-  total: string;
-};
-
-const DEMO: Order = {
-  hall: "64 Degrees",
-  college: "Revelle",
-  emoji: "🍳",
-  cart: ["1× Grilled Chicken Bowl", "1× Garden Salad", "1× Water"],
-  pid_last4: "7842",
-  pickup_time: "12:15 PM",
-  order_number: "TDE-24801",
-  total: "$17.80",
-};
+import type { Order } from "@/lib/orderStore";
 
 export default function DasherPickupPage() {
-  const [order, setOrder] = useState<Order>(DEMO);
+  const router = useRouter();
+  const [order, setOrder] = useState<Order | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("dorm_dash_active_order");
-      if (raw) setOrder(JSON.parse(raw));
-    } catch { /* use demo */ }
+    const id = localStorage.getItem("dasher_claimed_order_id");
+    if (!id) return;
+    fetch(`/api/orders/${id}`)
+      .then(r => r.json())
+      .then(d => { if (d.order) setOrder(d.order); })
+      .catch(() => {});
   }, []);
+
+  // Broadcast dasher GPS position every 5 seconds while on this screen
+  useEffect(() => {
+    const id = localStorage.getItem("dasher_claimed_order_id");
+    if (!id || !navigator.geolocation) return;
+    let lastUpdate = 0;
+    const watchId = navigator.geolocation.watchPosition((pos) => {
+      const now = Date.now();
+      if (now - lastUpdate < 5000) return;
+      lastUpdate = now;
+      fetch(`/api/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dasherLat: pos.coords.latitude, dasherLng: pos.coords.longitude }),
+      }).catch(() => {});
+    }, () => {}, { enableHighAccuracy: true });
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
+  const markPickedUp = async () => {
+    if (!order) return;
+    setConfirmed(true);
+    await fetch(`/api/orders/${order.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "picked_up" }),
+    });
+    router.push("/dasher/delivery");
+  };
+
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <p className="text-gray-400 text-sm">Loading order…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col pb-10">
 
-      {/* Header */}
       <div className="bg-[#003087] px-5 pt-14 pb-6 text-white">
         <div className="max-w-md mx-auto">
           <p className="text-white/60 text-sm flex items-center gap-1.5 mb-3">
@@ -54,17 +72,16 @@ export default function DasherPickupPage() {
 
       <main className="flex-1 max-w-md mx-auto w-full px-5 py-5 flex flex-col gap-4">
 
-        {/* Dining Hall */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center text-2xl">
-              {order.emoji}
+              {order.hallEmoji}
             </div>
             <div>
               <p className="font-black text-gray-900 text-lg">{order.hall}</p>
               <div className="flex items-center gap-1 text-gray-400 text-xs mt-0.5">
                 <MapPin size={11}/>
-                <span>{order.college} College</span>
+                <span>{order.hallCollege}</span>
               </div>
             </div>
           </div>
@@ -91,7 +108,6 @@ export default function DasherPickupPage() {
           </p>
         </div>
 
-        {/* Order number */}
         {order.order_number && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 flex items-center justify-between">
             <p className="text-sm text-gray-500 font-semibold">Order #</p>
@@ -99,7 +115,6 @@ export default function DasherPickupPage() {
           </div>
         )}
 
-        {/* Items */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-3">
             <Package size={15} className="text-[#003087]"/>
@@ -121,7 +136,6 @@ export default function DasherPickupPage() {
           </div>
         </div>
 
-        {/* Confirm & Continue */}
         {!confirmed ? (
           <button
             onClick={() => setConfirmed(true)}
@@ -131,12 +145,12 @@ export default function DasherPickupPage() {
             I have the order
           </button>
         ) : (
-          <Link
-            href="/dasher/delivery"
+          <button
+            onClick={markPickedUp}
             className="w-full flex items-center justify-center gap-2 bg-[#F5B700] text-[#003087] font-black py-4 rounded-2xl shadow-lg hover:bg-[#e0a800] transition active:scale-[0.98] text-base animate-fade-in"
           >
             Start Delivery →
-          </Link>
+          </button>
         )}
       </main>
     </div>

@@ -6,6 +6,7 @@ import { Check, ChevronRight, Upload, X, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const STEPS = ["Account", "Student ID", "Transport"];
+const COLLEGES = ["Revelle College","Muir College","Marshall College","Warren College","Roosevelt College","Sixth College","Seventh College","Eighth College"];
 
 export default function DasherSignupPage() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function DasherSignupPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [college, setCollege] = useState("Sixth College");
 
   // Step 2 fields
   const [pid, setPid] = useState("");
@@ -31,7 +33,7 @@ export default function DasherSignupPage() {
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   const canNext = [
-    firstName && lastName && email && phone && password.length >= 6,
+    firstName && lastName && email && phone && password.length >= 6 && college,
     pid.length >= 7 && idPhoto,
     !!transport,
   ][step];
@@ -103,6 +105,12 @@ export default function DasherSignupPage() {
               {password.length > 0 && password.length < 6 && (
                 <p className="text-xs text-red-500 mt-1">At least 6 characters required</p>
               )}
+            </Field>
+            <Field label="Your College">
+              <select className={`${inp} appearance-none`} value={college} onChange={e => setCollege(e.target.value)}>
+                {COLLEGES.map(c => <option key={c}>{c}</option>)}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">Used to match you with door-delivery orders in your college area</p>
             </Field>
           </div>
         )}
@@ -234,7 +242,13 @@ export default function DasherSignupPage() {
             </button>
           ) : (
             <button
-              onClick={() => { if (canNext) router.push("/dasher/home"); }}
+              onClick={() => {
+                if (!canNext) return;
+                localStorage.setItem("dasher_name", `${firstName} ${lastName}`);
+                localStorage.setItem("dasher_college", college);
+                localStorage.setItem("dasher_transport", transport);
+                router.push("/dasher/home");
+              }}
               disabled={!canNext}
               className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold transition text-base ${
                 canNext
