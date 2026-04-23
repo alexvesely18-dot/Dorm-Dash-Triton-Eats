@@ -236,7 +236,7 @@ export default function OrderPage() {
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  const canSubmit = hall && cartCount > 0 && triton && file && !analyzing && (extracted || ocrError) && building && (!toDoor || room.trim());
+  const canSubmit = hall && cartCount > 0 && triton && building && (!toDoor || room.trim());
 
   const saveAndGo = async () => {
     const hallData = HALLS.find((h) => h.id === hall);
@@ -536,7 +536,7 @@ export default function OrderPage() {
           </button>
           {!canSubmit && !analyzing && (
             <p className="text-center text-xs text-gray-400 mt-2">
-              {!hall ? "Select a dining hall" : cartCount === 0 ? "Add at least one item" : !triton ? "Confirm Triton2Go container" : !file ? "Upload your screenshot" : toDoor && !room.trim() ? "Enter your room number" : "Almost there!"}
+              {!hall ? "Select a dining hall" : cartCount === 0 ? "Add at least one item" : !triton ? "Confirm Triton2Go container" : toDoor && !room.trim() ? "Enter your room number" : "Almost there!"}
             </p>
           )}
         </div>

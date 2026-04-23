@@ -2,8 +2,27 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Bell, Star, DollarSign, Package } from "lucide-react";
+import { Bell, Star, DollarSign, Package, Clock } from "lucide-react";
 import type { Order } from "@/lib/orderStore";
+
+type DasherDelivery = {
+  id: string;
+  orderNumber: string;
+  hall: string;
+  hallEmoji: string;
+  building: string;
+  earning: number;
+  toDoor: boolean;
+  completedAt: string;
+};
+
+function elapsed(iso: string) {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return new Date(iso).toLocaleDateString();
+}
 
 export default function DasherHomePage() {
   const [active, setActive] = useState(false);
@@ -13,12 +32,18 @@ export default function DasherHomePage() {
   const [dasherCollege, setDasherCollege] = useState("");
   const [dasherTransport, setDasherTransport] = useState("bike");
   const [claiming, setClaiming] = useState(false);
+  const [history, setHistory] = useState<DasherDelivery[]>([]);
+  const [tab, setTab] = useState<"dashboard" | "history">("dashboard");
   const shownIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setDasherName(localStorage.getItem("dasher_name") ?? "Dasher");
     setDasherCollege(localStorage.getItem("dasher_college") ?? "");
     setDasherTransport(localStorage.getItem("dasher_transport") ?? "bike");
+    try {
+      const raw = localStorage.getItem("dasher_history");
+      if (raw) setHistory(JSON.parse(raw));
+    } catch {}
   }, []);
 
   // Poll for available orders when active
@@ -28,11 +53,10 @@ export default function DasherHomePage() {
 
     const poll = async () => {
       try {
-        const res = await fetch(`/api/orders/available?dasherCollege=${encodeURIComponent(dasherCollege)}`);
+        const res = await fetch(`/api/orders?dasherCollege=${encodeURIComponent(dasherCollege)}`);
         if (!res.ok) return;
         const data = await res.json();
         const orders: Order[] = data.orders ?? [];
-        // Show the first order we haven't dismissed yet
         const next = orders.find(o => !shownIds.current.has(o.id));
         if (alive && next && !incomingOrder) {
           setIncomingOrder(next);
@@ -74,7 +98,6 @@ export default function DasherHomePage() {
         body: JSON.stringify({ dasherName, dasherTransport }),
       });
       if (res.status === 409) {
-        // Already claimed by someone else
         shownIds.current.add(incomingOrder.id);
         setIncomingOrder(null);
         setClaiming(false);
@@ -89,6 +112,15 @@ export default function DasherHomePage() {
   };
 
   const firstName = dasherName.split(" ")[0];
+
+  // Computed stats from real history
+  const todayStr = new Date().toDateString();
+  const todayDeliveries = history.filter(d => new Date(d.completedAt).toDateString() === todayStr);
+  const todayEarnings = todayDeliveries.reduce((s, d) => s + d.earning, 0);
+  const weekEarnings = history.reduce((s, d) => {
+    const age = Date.now() - new Date(d.completedAt).getTime();
+    return age < 7 * 24 * 3600 * 1000 ? s + d.earning : s;
+  }, 0);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col pb-8">
@@ -113,11 +145,12 @@ export default function DasherHomePage() {
 
       <main className="flex-1 max-w-md mx-auto w-full px-5 -mt-1">
 
+        {/* Stat cards */}
         <div className="grid grid-cols-3 gap-3 mt-5">
           {[
-            { icon: <DollarSign size={16}/>, label: "Today",      value: "$14.50" },
-            { icon: <Package size={16}/>,    label: "Deliveries", value: "3"      },
-            { icon: <Star size={16}/>,       label: "Rating",     value: "4.9"    },
+            { icon: <DollarSign size={16}/>, label: "Today",      value: `$${todayEarnings.toFixed(2)}` },
+            { icon: <Package size={16}/>,    label: "Deliveries", value: String(history.length) },
+            { icon: <Star size={16}/>,       label: "Rating",     value: history.length > 0 ? "4.9" : "—" },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex flex-col items-center gap-1">
               <span className="text-[#003087]">{s.icon}</span>
@@ -154,7 +187,7 @@ export default function DasherHomePage() {
                 <div>
                   <p className="text-sm font-bold text-green-800">Looking for orders nearby…</p>
                   <p className="text-xs text-green-600 mt-0.5">
-                    {dasherCollege ? `Showing all orders + door delivery in ${dasherCollege}` : "Showing all lobby orders"}
+                    {dasherCollege ? `Showing orders + door delivery in ${dasherCollege}` : "Showing all lobby orders"}
                   </p>
                 </div>
               </div>
@@ -167,16 +200,76 @@ export default function DasherHomePage() {
           </div>
         </div>
 
-        {/* Earnings */}
-        <div className="mt-4 bg-[#003087] rounded-3xl p-5 text-white">
-          <p className="text-white/60 text-xs font-semibold uppercase tracking-wide mb-1">This Week</p>
-          <p className="text-3xl font-black">$47.25</p>
-          <div className="mt-3 flex gap-4 text-sm">
-            <div><p className="text-white/50 text-xs">Orders</p><p className="font-bold">11</p></div>
-            <div><p className="text-white/50 text-xs">Avg. Tip</p><p className="font-bold">$2.10</p></div>
-            <div><p className="text-white/50 text-xs">Best Day</p><p className="font-bold">$18.50</p></div>
-          </div>
+        {/* Tabs */}
+        <div className="mt-4 flex bg-gray-100 rounded-2xl p-1 gap-1">
+          {([
+            { id: "dashboard", label: "Earnings" },
+            { id: "history",   label: history.length > 0 ? `Past Orders (${history.length})` : "Past Orders" },
+          ] as const).map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${tab === t.id ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-600"}`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
+
+        {/* Earnings tab */}
+        {tab === "dashboard" && (
+          <div className="mt-3 bg-[#003087] rounded-3xl p-5 text-white">
+            <p className="text-white/60 text-xs font-semibold uppercase tracking-wide mb-1">This Week</p>
+            <p className="text-3xl font-black">${weekEarnings.toFixed(2)}</p>
+            <div className="mt-3 flex gap-5 text-sm">
+              <div>
+                <p className="text-white/50 text-xs">Total Orders</p>
+                <p className="font-bold">{history.length}</p>
+              </div>
+              <div>
+                <p className="text-white/50 text-xs">Today</p>
+                <p className="font-bold">{todayDeliveries.length} orders</p>
+              </div>
+              <div>
+                <p className="text-white/50 text-xs">Today&apos;s Earnings</p>
+                <p className="font-bold">${todayEarnings.toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Past Orders tab */}
+        {tab === "history" && (
+          <div className="mt-3 flex flex-col gap-2">
+            {history.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 text-center">
+                <p className="text-4xl mb-3">🛵</p>
+                <p className="font-bold text-gray-700">No deliveries yet</p>
+                <p className="text-xs text-gray-400 mt-1.5">Complete your first delivery to see your history here</p>
+              </div>
+            ) : (
+              history.map((entry) => (
+                <div key={entry.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3.5 flex items-center gap-3">
+                  <span className="text-2xl flex-shrink-0">{entry.hallEmoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900 truncate">{entry.hall} → {entry.building}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5">
+                      <Clock size={10}/>
+                      {elapsed(entry.completedAt)}
+                      {entry.toDoor && (
+                        <span className="bg-[#003087]/10 text-[#003087] px-1.5 py-0.5 rounded-full text-[10px] font-semibold">Door</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-black text-green-600 text-sm">+${entry.earning.toFixed(2)}</p>
+                    <p className="text-[10px] text-gray-400">{entry.orderNumber}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         <Link href="/dasher" className="mt-5 w-full flex items-center justify-center text-xs text-gray-400 hover:text-gray-600 py-2">
           ← Back to Dasher Login
@@ -209,8 +302,8 @@ export default function DasherHomePage() {
               {incomingOrder.toDoor && incomingOrder.room && (
                 <Row emoji="🚪" label="Room delivery" value={`Room ${incomingOrder.room}`}/>
               )}
-              <Row emoji="🥡" label="Items"   value={`${incomingOrder.cart.length} item${incomingOrder.cart.length !== 1 ? "s" : ""} · Triton2Go`}/>
-              <Row emoji="💰" label="You earn" value="$4.75 + tips"/>
+              <Row emoji="🥡" label="Items"    value={`${incomingOrder.cart.length} item${incomingOrder.cart.length !== 1 ? "s" : ""} · Triton2Go`}/>
+              <Row emoji="💰" label="You earn" value={`$${(4.75 + (incomingOrder.toDoor ? 2.0 : 0)).toFixed(2)} + tips`}/>
               {incomingOrder.toDoor && (
                 <div className="bg-[#003087]/5 rounded-xl px-3 py-2 text-xs text-[#003087] font-semibold">
                   🚪 Door delivery — only you ({dasherCollege}) can take this order

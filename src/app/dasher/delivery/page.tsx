@@ -62,6 +62,23 @@ export default function DasherDeliveryPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "delivered" }),
     });
+
+    // Persist to dasher history in localStorage
+    try {
+      const entry = {
+        id: order.id,
+        orderNumber: order.order_number,
+        hall: order.hall,
+        hallEmoji: order.hallEmoji,
+        building: order.building,
+        earning: 4.75 + (order.toDoor ? 2.0 : 0),
+        toDoor: order.toDoor,
+        completedAt: new Date().toISOString(),
+      };
+      const prev = JSON.parse(localStorage.getItem("dasher_history") ?? "[]");
+      localStorage.setItem("dasher_history", JSON.stringify([entry, ...prev]));
+    } catch {}
+
     localStorage.removeItem("dasher_claimed_order_id");
     router.push("/dasher/complete");
   };
