@@ -58,7 +58,7 @@ export default function ProfilePage() {
       const delivered = history.filter((o: { status: string }) => o.status === "delivered");
       setOrderCount(delivered.length);
       const spent = delivered.reduce((sum: number, o: { total: string }) => {
-        const n = parseFloat(o.total.replace("$", ""));
+        const n = typeof o.total === "number" ? o.total : parseFloat(String(o.total).replace("$", ""));
         return sum + (isNaN(n) ? 0 : n);
       }, 0);
       setTotalSpent(spent);

@@ -12,7 +12,10 @@ export type Order = {
   pid_last4: string | null;
   pickup_time: string | null;
   order_number: string;
-  total: string;
+  total: number;
+  subtotal: number;
+  deliveryFee: number;
+  tier: 'close' | 'medium' | 'far';
   building: string;
   deliveryCollege: string;
   destLat: number;
