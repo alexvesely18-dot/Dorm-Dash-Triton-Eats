@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
   const available = Array.from(orderStore.values()).filter((o) => {
     if (o.status !== "pending") return false;
-    if (o.toDoor && o.deliveryCollege !== dasherCollege) return false;
+    if (o.toDoor && dasherCollege && o.deliveryCollege !== dasherCollege) return false;
     return true;
   });
 

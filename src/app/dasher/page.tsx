@@ -2,10 +2,34 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
+const COLLEGES = [
+  "Revelle College",
+  "Muir College",
+  "Marshall College",
+  "Warren College",
+  "Roosevelt College",
+  "Sixth College",
+  "Seventh College",
+  "Eighth College",
+];
+
 export default function DasherLoginPage() {
+  const router = useRouter();
   const [show, setShow] = useState(false);
+  const [name, setName] = useState("");
+  const [college, setCollege] = useState(COLLEGES[0]);
+  const [transport, setTransport] = useState<"bike" | "scooter">("bike");
+
+  const signIn = () => {
+    if (!name.trim()) return;
+    localStorage.setItem("dasher_name", name.trim());
+    localStorage.setItem("dasher_college", college);
+    localStorage.setItem("dasher_transport", transport);
+    router.push("/dasher/home");
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#003087]">
@@ -26,9 +50,22 @@ export default function DasherLoginPage() {
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Your Name</label>
+            <input
+              type="text"
+              placeholder="First Last"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") signIn(); }}
+              className={cls}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">UCSD Email</label>
             <input type="email" placeholder="triton@ucsd.edu" className={cls}/>
           </div>
+
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Password</label>
             <div className="relative">
@@ -39,9 +76,43 @@ export default function DasherLoginPage() {
             </div>
           </div>
 
-          <Link href="/dasher/home" className="mt-1 w-full flex items-center justify-center bg-[#F5B700] text-[#003087] font-bold py-4 rounded-2xl shadow-lg hover:bg-[#e0a800] transition active:scale-[0.98] text-base">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Your College</label>
+            <select
+              value={college}
+              onChange={e => setCollege(e.target.value)}
+              className={cls}
+            >
+              {COLLEGES.map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Transport</label>
+            <div className="flex gap-3">
+              {(["bike", "scooter"] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTransport(t)}
+                  className={`flex-1 py-3 rounded-2xl border-2 font-semibold text-sm transition ${
+                    transport === t ? "border-[#003087] bg-[#003087]/5 text-[#003087]" : "border-gray-200 text-gray-500 hover:border-gray-300"
+                  }`}
+                >
+                  {t === "bike" ? "🚲 Bike" : "🛵 Scooter"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={signIn}
+            disabled={!name.trim()}
+            className={`mt-1 w-full flex items-center justify-center font-bold py-4 rounded-2xl shadow-lg transition active:scale-[0.98] text-base ${
+              name.trim() ? "bg-[#F5B700] text-[#003087] hover:bg-[#e0a800]" : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            }`}
+          >
             Sign In →
-          </Link>
+          </button>
 
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-200"/>
@@ -62,4 +133,4 @@ export default function DasherLoginPage() {
   );
 }
 
-const cls = "w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition";
+const cls = "w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition appearance-none";
