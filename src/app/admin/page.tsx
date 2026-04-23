@@ -1,20 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Shield } from "lucide-react";
 
+const ADMIN_EMAIL = "avesely@ucsd.edu";
+const ADMIN_PASS  = "Password124!";
+
 export default function AdminLoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [email, setEmail]   = useState("");
   const [password, setPassword] = useState("");
-  const [show, setShow] = useState(false);
-  const [error, setError] = useState(false);
+  const [show, setShow]     = useState(false);
+  const [error, setError]   = useState(false);
 
   const login = () => {
-    if (email === "avesely@ucsd.edu" && password === "Password124!") {
+    if (email.trim() === ADMIN_EMAIL && password === ADMIN_PASS) {
       localStorage.setItem("admin_authed", "1");
-      router.push("/admin/dashboard");
+      window.location.href = "/admin/dashboard";
     } else {
       setError(true);
     }
@@ -22,9 +23,8 @@ export default function AdminLoginPage() {
 
   return (
     <div className="min-h-screen bg-[#0A0F1E] flex flex-col items-center justify-center px-6">
-
       <div className="w-full max-w-sm">
-        {/* Logo */}
+
         <div className="flex flex-col items-center mb-10">
           <div className="w-16 h-16 bg-[#F5B700] rounded-2xl flex items-center justify-center mb-4 shadow-lg">
             <Shield size={30} className="text-[#003087]"/>
@@ -33,24 +33,24 @@ export default function AdminLoginPage() {
           <p className="text-white/40 text-sm mt-1">Operations Dashboard</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white/5 border border-white/10 rounded-3xl px-6 py-8 backdrop-blur-sm">
-          <h2 className="text-white font-bold text-lg mb-6">Sign in to Admin</h2>
+        <div className="bg-white rounded-3xl px-6 py-8 shadow-2xl">
+          <h2 className="text-gray-900 font-bold text-lg mb-6">Sign in to Admin</h2>
 
           <div className="flex flex-col gap-4">
             <div>
-              <label className="text-white/50 text-xs font-semibold uppercase tracking-wide block mb-1.5">Email</label>
+              <label className="text-gray-500 text-xs font-semibold uppercase tracking-wide block mb-1.5">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => { setEmail(e.target.value); setError(false); }}
                 onKeyDown={e => { if (e.key === "Enter") login(); }}
                 placeholder="you@ucsd.edu"
-                className="w-full bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white text-sm placeholder-white/25 focus:outline-none focus:border-[#F5B700]/60 focus:ring-1 focus:ring-[#F5B700]/30 transition"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition"
               />
             </div>
+
             <div>
-              <label className="text-white/50 text-xs font-semibold uppercase tracking-wide block mb-1.5">Password</label>
+              <label className="text-gray-500 text-xs font-semibold uppercase tracking-wide block mb-1.5">Password</label>
               <div className="relative">
                 <input
                   type={show ? "text" : "password"}
@@ -58,23 +58,28 @@ export default function AdminLoginPage() {
                   onChange={e => { setPassword(e.target.value); setError(false); }}
                   onKeyDown={e => { if (e.key === "Enter") login(); }}
                   placeholder="••••••••"
-                  className="w-full bg-white/8 border border-white/15 rounded-xl px-4 py-3 pr-11 text-white text-sm placeholder-white/25 focus:outline-none focus:border-[#F5B700]/60 focus:ring-1 focus:ring-[#F5B700]/30 transition"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-11 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition"
                 />
-                <button onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">
+                <button
+                  type="button"
+                  onClick={() => setShow(!show)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
                   {show ? <EyeOff size={15}/> : <Eye size={15}/>}
                 </button>
               </div>
             </div>
 
             {error && (
-              <p className="text-red-400 text-xs font-semibold text-center animate-fade-in">
-                Invalid credentials. Try again.
+              <p className="text-red-500 text-xs font-semibold text-center">
+                Invalid credentials — try again.
               </p>
             )}
 
             <button
+              type="button"
               onClick={login}
-              className="mt-1 w-full bg-[#F5B700] text-[#003087] font-black py-3.5 rounded-xl hover:bg-[#e0a800] transition active:scale-[0.98] shadow-lg"
+              className="mt-1 w-full bg-[#003087] text-white font-black py-3.5 rounded-xl hover:bg-[#002060] transition active:scale-[0.98] shadow-lg"
             >
               Sign In
             </button>
