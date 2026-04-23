@@ -6,6 +6,30 @@ import { useRouter } from "next/navigation";
 import { ChevronRight, CheckCircle, X, Loader2, Minus, Plus, Upload, AlertCircle, MapPin, Clock } from "lucide-react";
 import { BUILDING_COLLEGE, BUILDING_COORDS } from "@/lib/orderStore";
 import { isHallOpen, hallOpenLabel } from "@/lib/campus";
+import type { HallId, CollegeId } from "@/lib/pricing";
+
+// Map frontend hall IDs → pricing engine HallId
+const HALL_TO_PRICING_ID: Record<string, HallId> = {
+  "64deg":    "sixty4",
+  "pines":    "pines",
+  "sixth":    "sixthDining",
+  "ovt":      "ovt",
+  "ventanas": "ventanas",
+  "canyon":   "canyon",
+  "bistro":   "bistro",
+};
+
+// Map building college display string → pricing engine CollegeId
+const COLLEGE_TO_PRICING_ID: Record<string, CollegeId> = {
+  "Revelle College":   "revelle",
+  "Muir College":      "muir",
+  "Marshall College":  "marshall",
+  "Warren College":    "warren",
+  "Roosevelt College": "erc",
+  "Sixth College":     "sixth",
+  "Seventh College":   "seventh",
+  "Eighth College":    "eighth",
+};
 
 // UCSD campus bounding box
 const UCSD = { swLat: 32.8685, swLng: -117.2440, neLat: 32.8955, neLng: -117.2115 };
@@ -148,6 +172,15 @@ const MENUS: Record<string, { category: string; items: { name: string; price: nu
   ],
 };
 
+// Derive drink item names from menu categories that contain "Drinks"
+const DRINK_NAMES = new Set(
+  Object.values(MENUS).flatMap(groups =>
+    groups
+      .filter(g => g.category.includes("Drinks") || g.category.includes("☕"))
+      .flatMap(g => g.items.map(i => i.name))
+  )
+);
+
 type Extracted = {
   pid_last4: string | null;
   order_number: string | null;
@@ -186,6 +219,7 @@ export default function OrderPage() {
   const [room, setRoom] = useState("");
   const [scheduleMode, setScheduleMode] = useState(false);
   const [scheduledFor, setScheduledFor] = useState("");
+  const [apiError, setApiError] = useState("");
 
   const menu = MENUS[hall] ?? [];
   const allItems = menu.flatMap((g) => g.items);
@@ -242,43 +276,59 @@ export default function OrderPage() {
   const canSubmit = hall && cartCount > 0 && triton && building && (!toDoor || room.trim());
 
   const saveAndGo = async () => {
+    setApiError("");
     const hallData = HALLS.find((h) => h.id === hall);
-    const doorFee  = toDoor ? 2.0 : 0;
     const destCoords = BUILDING_COORDS[building] ?? { lat: 32.8800, lng: -117.2340 };
-    const cartItems = Object.entries(cart).map(([name, qty]) => `${qty}× ${name}`);
-    const total = `$${(cartTotal * 1.0775 + 1.5 + doorFee).toFixed(2)}`;
+    const deliveryCollege = BUILDING_COLLEGE[building] ?? "";
+
+    // Build cart with type info for pricing engine
+    const cartPayload = Object.entries(cart).map(([name, qty]) => ({
+      name,
+      quantity: qty,
+      type: DRINK_NAMES.has(name) ? "drink" : "food",
+    }));
+    const cartStrings = Object.entries(cart).map(([name, qty]) => `${qty}× ${name}`);
+
     const payload = {
-      hall:          hallData?.name    ?? "",
+      hall:          HALL_TO_PRICING_ID[hall] ?? hall,
+      college:       COLLEGE_TO_PRICING_ID[deliveryCollege] ?? "sixth",
       hallEmoji:     hallData?.emoji   ?? "🍽",
       hallCollege:   hallData?.college ?? "",
       hallLat:       hallData?.lat     ?? 32.8800,
       hallLng:       hallData?.lng     ?? -117.2340,
-      cart:          cartItems,
+      cart:          cartPayload,
       pid_last4:     extracted?.pid_last4   ?? null,
       pickup_time:   extracted?.pickup_time ?? null,
       order_number:  extracted?.order_number ?? null,
-      total,
       building,
-      deliveryCollege: BUILDING_COLLEGE[building] ?? "",
+      deliveryCollege,
       destLat:       destCoords.lat,
       destLng:       destCoords.lng,
       room:          toDoor ? room.trim() : null,
+      deliverToRoom: toDoor,
       toDoor,
       scheduledFor:  scheduleMode && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
     };
-    const res  = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+
+    const res = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const data = await res.json();
+
+    if (!res.ok) {
+      setApiError(data.error ?? "Failed to place order");
+      return;
+    }
+
     localStorage.setItem("dorm_dash_order_id", data.id);
 
-    // Persist to student history
+    // Persist to student history using the API's authoritative total
     try {
       const entry = {
         id: data.id,
-        hall: hallData?.name ?? "",
+        hall: data.order.hall,
         hallEmoji: hallData?.emoji ?? "🍽",
         hallCollege: hallData?.college ?? "",
-        cart: cartItems,
-        total,
+        cart: cartStrings,
+        total: `$${Number(data.order.total).toFixed(2)}`,
         building,
         room: toDoor ? room.trim() : null,
         toDoor,
@@ -617,6 +667,12 @@ export default function OrderPage() {
             <p className="text-center text-xs text-gray-400 mt-2">
               {!hall ? "Select a dining hall" : cartCount === 0 ? "Add at least one item" : !triton ? "Confirm Triton2Go container" : toDoor && !room.trim() ? "Enter your room number" : "Almost there!"}
             </p>
+          )}
+          {apiError && (
+            <div className="mt-2 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+              <AlertCircle size={14} className="text-red-500 flex-shrink-0"/>
+              <p className="text-xs text-red-700 font-semibold">{apiError}</p>
+            </div>
           )}
         </div>
       </div>
