@@ -1,19 +1,25 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, CheckCircle, X, Loader2, Minus, Plus, Upload, AlertCircle } from "lucide-react";
-import { BUILDING_COLLEGE } from "@/lib/orderStore";
+import { ChevronRight, CheckCircle, X, Loader2, Minus, Plus, Upload, AlertCircle, MapPin } from "lucide-react";
+import { BUILDING_COLLEGE, BUILDING_COORDS } from "@/lib/orderStore";
+
+// UCSD campus bounding box
+const UCSD = { swLat: 32.8685, swLng: -117.2440, neLat: 32.8955, neLng: -117.2115 };
+function isOnCampus(lat: number, lng: number) {
+  return lat >= UCSD.swLat && lat <= UCSD.neLat && lng >= UCSD.swLng && lng <= UCSD.neLng;
+}
 
 const HALLS = [
-  { id: "64deg",    name: "64 Degrees",     college: "Revelle",        emoji: "🍳", bg: "bg-orange-50",  border: "border-orange-200" },
-  { id: "pines",    name: "Pines",           college: "Muir",           emoji: "🌮", bg: "bg-green-50",   border: "border-green-200"  },
-  { id: "sixth",    name: "Sixth Market",    college: "Sixth",          emoji: "🥗", bg: "bg-sky-50",     border: "border-sky-200"    },
-  { id: "ovt",      name: "OceanView",       college: "Roosevelt",      emoji: "🍜", bg: "bg-purple-50",  border: "border-purple-200" },
-  { id: "ventanas", name: "Café Ventanas",   college: "Warren",         emoji: "☕", bg: "bg-amber-50",   border: "border-amber-200"  },
-  { id: "canyon",   name: "Canyon Vista",    college: "Marshall",       emoji: "🌯", bg: "bg-rose-50",    border: "border-rose-200"   },
-  { id: "bistro",   name: "The Bistro",      college: "Seventh/Eighth", emoji: "🥪", bg: "bg-indigo-50",  border: "border-indigo-200" },
+  { id: "64deg",    name: "64 Degrees",   college: "Revelle",        emoji: "🍳", lat: 32.8735, lng: -117.2420, bg: "bg-orange-50",  border: "border-orange-200" },
+  { id: "pines",    name: "Pines",         college: "Muir",           emoji: "🌮", lat: 32.8793, lng: -117.2378, bg: "bg-green-50",   border: "border-green-200"  },
+  { id: "sixth",    name: "Sixth Market",  college: "Sixth",          emoji: "🥗", lat: 32.8830, lng: -117.2420, bg: "bg-sky-50",     border: "border-sky-200"    },
+  { id: "ovt",      name: "OceanView",     college: "Roosevelt",      emoji: "🍜", lat: 32.8764, lng: -117.2363, bg: "bg-purple-50",  border: "border-purple-200" },
+  { id: "ventanas", name: "Café Ventanas", college: "Warren",         emoji: "☕", lat: 32.8836, lng: -117.2372, bg: "bg-amber-50",   border: "border-amber-200"  },
+  { id: "canyon",   name: "Canyon Vista",  college: "Marshall",       emoji: "🌯", lat: 32.8752, lng: -117.2405, bg: "bg-rose-50",    border: "border-rose-200"   },
+  { id: "bistro",   name: "The Bistro",    college: "Seventh/Eighth", emoji: "🥪", lat: 32.8850, lng: -117.2402, bg: "bg-indigo-50",  border: "border-indigo-200" },
 ];
 
 const MENUS: Record<string, { category: string; items: { name: string; price: number }[] }[]> = {
@@ -155,6 +161,7 @@ const BUILDINGS = ["Tioga Hall","Tenaya Hall","Tahoe Hall","Shasta Hall","Anza H
 export default function OrderPage() {
   const router = useRouter();
   const [hall, setHall] = useState("");
+  const [locationStatus, setLocationStatus] = useState<"idle"|"ok"|"offcampus"|"denied">("idle");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [triton, setTriton] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -164,6 +171,16 @@ export default function OrderPage() {
   const [ocrError, setOcrError] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [building, setBuilding] = useState("Tioga Hall");
+
+  // Ask for location on mount to verify student is on campus
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setLocationStatus(isOnCampus(pos.coords.latitude, pos.coords.longitude) ? "ok" : "offcampus"),
+      () => setLocationStatus("denied"),
+      { timeout: 8000 }
+    );
+  }, []);
   const [toDoor, setToDoor] = useState(false);
   const [room, setRoom] = useState("");
 
@@ -223,11 +240,14 @@ export default function OrderPage() {
 
   const saveAndGo = async () => {
     const hallData = HALLS.find((h) => h.id === hall);
-    const doorFee = toDoor ? 2.0 : 0;
+    const doorFee  = toDoor ? 2.0 : 0;
+    const destCoords = BUILDING_COORDS[building] ?? { lat: 32.8800, lng: -117.2340 };
     const payload = {
       hall:          hallData?.name    ?? "",
       hallEmoji:     hallData?.emoji   ?? "🍽",
       hallCollege:   hallData?.college ?? "",
+      hallLat:       hallData?.lat     ?? 32.8800,
+      hallLng:       hallData?.lng     ?? -117.2340,
       cart:          Object.entries(cart).map(([name, qty]) => `${qty}× ${name}`),
       pid_last4:     extracted?.pid_last4   ?? null,
       pickup_time:   extracted?.pickup_time ?? null,
@@ -235,6 +255,8 @@ export default function OrderPage() {
       total:         `$${(cartTotal * 1.0775 + 1.5 + doorFee).toFixed(2)}`,
       building,
       deliveryCollege: BUILDING_COLLEGE[building] ?? "",
+      destLat:       destCoords.lat,
+      destLng:       destCoords.lng,
       room:          toDoor ? room.trim() : null,
       toDoor,
     };
@@ -251,8 +273,22 @@ export default function OrderPage() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
           Home
         </Link>
-        <h1 className="text-3xl font-black">New Order</h1>
-        <p className="text-white/60 text-sm mt-1">Select your dining hall and items</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-black">New Order</h1>
+            <p className="text-white/60 text-sm mt-1">Select your dining hall and items</p>
+          </div>
+          {locationStatus === "ok" && (
+            <span className="flex items-center gap-1 bg-green-500/20 text-green-300 text-xs font-bold px-2.5 py-1.5 rounded-full">
+              <MapPin size={11}/> On Campus
+            </span>
+          )}
+          {locationStatus === "offcampus" && (
+            <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-300 text-xs font-bold px-2.5 py-1.5 rounded-full">
+              <MapPin size={11}/> Off Campus
+            </span>
+          )}
+        </div>
       </div>
 
       <main className="flex-1 max-w-md mx-auto w-full px-5 py-6 pb-36 flex flex-col gap-8">

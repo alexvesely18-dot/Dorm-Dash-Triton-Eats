@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { MapPin, Package, MessageCircle, CheckCircle, ChevronRight, Building2 } from "lucide-react";
 import type { Order } from "@/lib/orderStore";
+
+const LiveMap = dynamic(() => import("@/components/LiveMap"), { ssr: false, loading: () => <div className="w-full h-full bg-[#E8F0E4] animate-pulse"/> });
 
 export default function DasherDeliveryPage() {
   const router = useRouter();
@@ -22,6 +25,24 @@ export default function DasherDeliveryPage() {
       .then(r => r.json())
       .then(d => { if (d.order) setOrder(d.order); })
       .catch(() => {});
+  }, []);
+
+  // Continuously broadcast dasher GPS (throttled to every 5s)
+  useEffect(() => {
+    const id = localStorage.getItem("dasher_claimed_order_id");
+    if (!id || !navigator.geolocation) return;
+    let lastUpdate = 0;
+    const watchId = navigator.geolocation.watchPosition((pos) => {
+      const now = Date.now();
+      if (now - lastUpdate < 5000) return;
+      lastUpdate = now;
+      fetch(`/api/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dasherLat: pos.coords.latitude, dasherLng: pos.coords.longitude }),
+      }).catch(() => {});
+    }, () => {}, { enableHighAccuracy: true });
+    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
   const send = () => {
@@ -108,21 +129,27 @@ export default function DasherDeliveryPage() {
           </div>
         </div>
 
-        {/* Campus mini-map */}
+        {/* Live Map */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-4 pt-4 pb-2">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Route</p>
+          <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Live Route</p>
+            <span className="text-[10px] text-green-600 font-semibold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse inline-block"/>
+              GPS Active
+            </span>
           </div>
-          <DeliveryMap />
-          <div className="px-4 pb-4 pt-2">
-            <div className="flex items-center justify-between text-xs text-gray-400 mb-1.5">
-              <span>{order.hall}</span>
-              <span>{order.building}</span>
-            </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-[#003087] to-[#F5B700] rounded-full" style={{ width: "35%" }}/>
-            </div>
-            <p className="text-[10px] text-gray-400 text-center mt-1.5">~6 min away</p>
+          <div style={{ height: 200 }}>
+            <LiveMap
+              hallLat={order.hallLat}
+              hallLng={order.hallLng}
+              hallName={order.hall}
+              hallEmoji={order.hallEmoji}
+              destLat={order.destLat}
+              destLng={order.destLng}
+              building={order.building}
+              dasherLat={order.dasherLat}
+              dasherLng={order.dasherLng}
+            />
           </div>
         </div>
 
@@ -214,33 +241,3 @@ export default function DasherDeliveryPage() {
   );
 }
 
-function DeliveryMap() {
-  return (
-    <div className="mx-4 rounded-2xl overflow-hidden border border-gray-100 bg-[#E8F0E4]" style={{ height: 160 }}>
-      <svg viewBox="0 0 360 160" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-        <rect width="360" height="160" fill="#E8F0E4"/>
-        <ellipse cx="180" cy="80" rx="70" ry="40" fill="#D4E8CC" opacity="0.7"/>
-        <rect x="0" y="85" width="360" height="6" fill="#D0D4CC"/>
-        <rect x="105" y="0" width="6" height="160" fill="#D0D4CC"/>
-        <rect x="200" y="45" width="5" height="115" fill="#D0D4CC"/>
-        <rect x="152" y="60" width="50" height="40" fill="#B4C8B4" rx="4"/>
-        <text x="177" y="85" textAnchor="middle" fontSize="6" fill="#2D4A2D" fontWeight="700">GEISEL</text>
-        <path id="del-route" d="M68,83 C80,65 108,50 140,35" fill="none" stroke="#F5B700" strokeWidth="2.5" strokeDasharray="6 3" opacity="0.9"/>
-        <circle cx="68" cy="83" r="10" fill="#003087" stroke="white" strokeWidth="2.5"/>
-        <text x="68" y="87" textAnchor="middle" fontSize="7" fill="white" fontWeight="800">64°</text>
-        <circle cx="140" cy="35" r="16" fill="#F5B700" opacity="0.15">
-          <animate attributeName="r" values="10;18;10" dur="2s" repeatCount="indefinite"/>
-          <animate attributeName="opacity" values="0.2;0;0.2" dur="2s" repeatCount="indefinite"/>
-        </circle>
-        <circle cx="140" cy="35" r="9" fill="#F5B700" stroke="white" strokeWidth="2.5"/>
-        <text x="140" y="39" textAnchor="middle" fontSize="8" fill="white">🏠</text>
-        <circle r="8" fill="#F5B700" stroke="white" strokeWidth="2">
-          <animateMotion dur="5s" repeatCount="indefinite"><mpath href="#del-route"/></animateMotion>
-        </circle>
-        <text fontSize="9" textAnchor="middle" dy="4">
-          🛵<animateMotion dur="5s" repeatCount="indefinite"><mpath href="#del-route"/></animateMotion>
-        </text>
-      </svg>
-    </div>
-  );
-}

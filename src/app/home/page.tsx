@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Bell, Plus, ChevronRight } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import type { Order } from "@/lib/orderStore";
+
+const LiveMap = dynamic(() => import("@/components/LiveMap"), { ssr: false, loading: () => <div className="w-full h-full bg-[#E8F0E4] animate-pulse rounded-2xl"/> });
 
 const PAST_ORDERS = [
   { id: 1, hall: "64 Degrees", items: "Grilled Chicken Bowl, Garden Salad, Water", date: "Apr 21", total: "$21.79", emoji: "🍳", bg: "bg-orange-100" },
@@ -104,7 +107,21 @@ export default function HomePage() {
               </div>
             )}
 
-            {(order.status === "claimed" || order.status === "picked_up") && <CampusMap />}
+            {(order.status === "claimed" || order.status === "picked_up") && (
+              <div className="mx-4 mt-2 rounded-2xl overflow-hidden border border-gray-100" style={{ height: 200 }}>
+                <LiveMap
+                  hallLat={order.hallLat}
+                  hallLng={order.hallLng}
+                  hallName={order.hall}
+                  hallEmoji={order.hallEmoji}
+                  destLat={order.destLat}
+                  destLng={order.destLng}
+                  building={order.building}
+                  dasherLat={order.dasherLat}
+                  dasherLng={order.dasherLng}
+                />
+              </div>
+            )}
 
             <div className="px-4 pb-4 pt-2">
               <div className="flex items-center justify-between text-xs text-gray-400 mb-1.5">
@@ -195,34 +212,3 @@ export default function HomePage() {
   );
 }
 
-function CampusMap() {
-  return (
-    <div className="mx-4 rounded-2xl overflow-hidden border border-gray-100 bg-[#E8F0E4]" style={{height: 190}}>
-      <svg viewBox="0 0 360 190" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-        <rect width="360" height="190" fill="#E8F0E4"/>
-        <ellipse cx="180" cy="95" rx="70" ry="45" fill="#D4E8CC" opacity="0.7"/>
-        <rect x="0"   y="100" width="360" height="7" fill="#D0D4CC"/>
-        <rect x="105" y="0"   width="7"   height="190" fill="#D0D4CC"/>
-        <rect x="200" y="55"  width="6"   height="135" fill="#D0D4CC"/>
-        <rect x="152" y="72" width="52" height="44" fill="#B4C8B4" rx="5"/>
-        <text x="178" y="106" textAnchor="middle" fontSize="6.5" fill="#2D4A2D" fontWeight="700">GEISEL</text>
-        <path id="dd-route" d="M68,98 C82,80 108,58 142,38" fill="none" stroke="#F5B700" strokeWidth="2.5" strokeDasharray="6 3" opacity="0.9"/>
-        <circle cx="68" cy="98" r="11" fill="#003087" stroke="white" strokeWidth="2.5"/>
-        <text x="68" y="102" textAnchor="middle" fontSize="7" fill="white" fontWeight="800">64°</text>
-        <circle cx="142" cy="38" r="18" fill="#F5B700" opacity="0.15">
-          <animate attributeName="r" values="12;22;12" dur="2s" repeatCount="indefinite"/>
-          <animate attributeName="opacity" values="0.2;0;0.2" dur="2s" repeatCount="indefinite"/>
-        </circle>
-        <circle cx="142" cy="38" r="10" fill="#F5B700" stroke="white" strokeWidth="2.5"/>
-        <text x="142" y="42" textAnchor="middle" fontSize="8" fill="white">🏠</text>
-        <text x="142" y="58" textAnchor="middle" fontSize="6" fill="#003087" fontWeight="700">Your Dorm</text>
-        <circle r="9" fill="#F5B700" stroke="white" strokeWidth="2.5">
-          <animateMotion dur="4s" repeatCount="indefinite"><mpath href="#dd-route"/></animateMotion>
-        </circle>
-        <text fontSize="10" textAnchor="middle" dy="4">
-          🛵<animateMotion dur="4s" repeatCount="indefinite"><mpath href="#dd-route"/></animateMotion>
-        </text>
-      </svg>
-    </div>
-  );
-}

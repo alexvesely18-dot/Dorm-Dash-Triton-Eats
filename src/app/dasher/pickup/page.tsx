@@ -19,6 +19,24 @@ export default function DasherPickupPage() {
       .catch(() => {});
   }, []);
 
+  // Broadcast dasher GPS position every 5 seconds while on this screen
+  useEffect(() => {
+    const id = localStorage.getItem("dasher_claimed_order_id");
+    if (!id || !navigator.geolocation) return;
+    let lastUpdate = 0;
+    const watchId = navigator.geolocation.watchPosition((pos) => {
+      const now = Date.now();
+      if (now - lastUpdate < 5000) return;
+      lastUpdate = now;
+      fetch(`/api/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dasherLat: pos.coords.latitude, dasherLng: pos.coords.longitude }),
+      }).catch(() => {});
+    }, () => {}, { enableHighAccuracy: true });
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
   const markPickedUp = async () => {
     if (!order) return;
     setConfirmed(true);
