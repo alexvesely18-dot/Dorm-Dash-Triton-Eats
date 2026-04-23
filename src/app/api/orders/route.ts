@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { orderStore, Order } from "@/lib/orderStore";
 
-// GET /api/orders/available?dasherCollege=Sixth+College
-// Returns orders visible to this dasher.
-// Door-delivery orders are only visible to dashers whose college matches the delivery college.
+// GET /api/orders?dasherCollege=Sixth+College
+// Returns pending orders visible to this dasher.
+// Door-delivery orders are only visible to dashers whose college matches (or when college is unset).
 export async function GET(req: NextRequest) {
   const dasherCollege = req.nextUrl.searchParams.get("dasherCollege") ?? "";
 

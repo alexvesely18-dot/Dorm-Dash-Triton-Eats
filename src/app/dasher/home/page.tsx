@@ -28,7 +28,7 @@ export default function DasherHomePage() {
 
     const poll = async () => {
       try {
-        const res = await fetch(`/api/orders/available?dasherCollege=${encodeURIComponent(dasherCollege)}`);
+        const res = await fetch(`/api/orders?dasherCollege=${encodeURIComponent(dasherCollege)}`);
         if (!res.ok) return;
         const data = await res.json();
         const orders: Order[] = data.orders ?? [];
