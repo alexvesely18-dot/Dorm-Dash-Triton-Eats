@@ -1,63 +1,61 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { MapPin, Package, MessageCircle, CheckCircle, ChevronRight, Building2 } from "lucide-react";
-
-type Order = {
-  hall: string;
-  college: string;
-  emoji: string;
-  cart: string[];
-  pid_last4: string | null;
-  order_number: string | null;
-  total: string;
-  building?: string;
-  room?: string;
-  toDoor?: boolean;
-};
-
-const DEMO: Order = {
-  hall: "64 Degrees",
-  college: "Revelle",
-  emoji: "🍳",
-  cart: ["1× Grilled Chicken Bowl", "1× Garden Salad", "1× Water"],
-  pid_last4: "7842",
-  order_number: "TDE-24801",
-  total: "$17.80",
-  building: "Tioga Hall",
-  room: "214B",
-  toDoor: true,
-};
+import type { Order } from "@/lib/orderStore";
 
 export default function DasherDeliveryPage() {
-  const [order, setOrder] = useState<Order>(DEMO);
+  const router = useRouter();
+  const [order, setOrder] = useState<Order | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [messages, setMessages] = useState([
-    { from: "student", text: "Hey! I'm in room 214B, second floor, door on the left 👋" },
+    { from: "student", text: "Hey! I'm in my room, door on the left 👋" },
   ]);
   const [input, setInput] = useState("");
+  const [delivering, setDelivering] = useState(false);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("dorm_dash_active_order");
-      if (raw) setOrder(JSON.parse(raw));
-    } catch { /* use demo */ }
+    const id = localStorage.getItem("dasher_claimed_order_id");
+    if (!id) return;
+    fetch(`/api/orders/${id}`)
+      .then(r => r.json())
+      .then(d => { if (d.order) setOrder(d.order); })
+      .catch(() => {});
   }, []);
 
   const send = () => {
     if (!input.trim()) return;
-    setMessages((m) => [...m, { from: "dasher", text: input.trim() }]);
+    setMessages(m => [...m, { from: "dasher", text: input.trim() }]);
     setInput("");
     setTimeout(() => {
-      setMessages((m) => [...m, { from: "student", text: "Thanks! See you soon 🙏" }]);
+      setMessages(m => [...m, { from: "student", text: "Thanks, see you soon! 🙏" }]);
     }, 1500);
   };
+
+  const markDelivered = async () => {
+    if (!order || delivering) return;
+    setDelivering(true);
+    await fetch(`/api/orders/${order.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "delivered" }),
+    });
+    localStorage.removeItem("dasher_claimed_order_id");
+    router.push("/dasher/complete");
+  };
+
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <p className="text-gray-400 text-sm">Loading delivery…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col pb-10">
 
-      {/* Header */}
       <div className="bg-[#003087] px-5 pt-14 pb-6 text-white">
         <div className="max-w-md mx-auto">
           <p className="text-white/60 text-sm flex items-center gap-1.5 mb-3">
@@ -84,12 +82,12 @@ export default function DasherDeliveryPage() {
                 <Building2 size={18} className="text-[#003087]"/>
               </div>
               <div>
-                <p className="font-black text-gray-900 text-lg">{order.building ?? "Tioga Hall"}</p>
-                <p className="text-xs text-gray-400">{order.college} College</p>
+                <p className="font-black text-gray-900 text-lg">{order.building}</p>
+                <p className="text-xs text-gray-400">{order.deliveryCollege}</p>
               </div>
             </div>
 
-            {order.toDoor && order.room && (
+            {order.toDoor && order.room ? (
               <div className="bg-[#F5B700]/20 border-2 border-[#F5B700] rounded-2xl px-4 py-3 flex items-center gap-3">
                 <span className="text-2xl">🚪</span>
                 <div>
@@ -98,9 +96,7 @@ export default function DasherDeliveryPage() {
                   <p className="text-xs text-[#003087]/60 mt-0.5">Deliver directly to the door</p>
                 </div>
               </div>
-            )}
-
-            {!order.toDoor && (
+            ) : (
               <div className="bg-gray-50 rounded-2xl px-4 py-3 flex items-center gap-3">
                 <span className="text-xl">🏢</span>
                 <div>
@@ -121,7 +117,7 @@ export default function DasherDeliveryPage() {
           <div className="px-4 pb-4 pt-2">
             <div className="flex items-center justify-between text-xs text-gray-400 mb-1.5">
               <span>{order.hall}</span>
-              <span>{order.building ?? "Tioga Hall"}</span>
+              <span>{order.building}</span>
             </div>
             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-[#003087] to-[#F5B700] rounded-full" style={{ width: "35%" }}/>
@@ -150,7 +146,7 @@ export default function DasherDeliveryPage() {
           </div>
         </div>
 
-        {/* Chat with Student */}
+        {/* Chat */}
         <button
           onClick={() => setShowChat(true)}
           className="w-full flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 hover:shadow-md transition"
@@ -168,13 +164,14 @@ export default function DasherDeliveryPage() {
         </button>
 
         {/* Mark Delivered */}
-        <Link
-          href="/dasher/complete"
-          className="w-full flex items-center justify-center gap-2 bg-green-500 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-green-600 transition active:scale-[0.98] text-base"
+        <button
+          onClick={markDelivered}
+          disabled={delivering}
+          className="w-full flex items-center justify-center gap-2 bg-green-500 text-white font-black py-4 rounded-2xl shadow-lg hover:bg-green-600 transition active:scale-[0.98] text-base disabled:opacity-60"
         >
           <CheckCircle size={18}/>
-          Mark as Delivered
-        </Link>
+          {delivering ? "Marking as delivered…" : "Mark as Delivered"}
+        </button>
 
       </main>
 
@@ -185,11 +182,10 @@ export default function DasherDeliveryPage() {
             <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center gap-3">
               <div className="w-10 h-10 bg-[#F5B700] rounded-full flex items-center justify-center text-[#003087] font-black text-sm flex-shrink-0">AT</div>
               <div>
-                <p className="font-bold text-gray-900">Alex T. (Student)</p>
+                <p className="font-bold text-gray-900">Student</p>
                 <p className="text-xs text-green-500 font-semibold">Online</p>
               </div>
             </div>
-
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
               {messages.map((m, i) => (
                 <div key={i} className={`flex ${m.from === "dasher" ? "justify-end" : "justify-start"}`}>
@@ -199,7 +195,6 @@ export default function DasherDeliveryPage() {
                 </div>
               ))}
             </div>
-
             <div className="px-4 pb-6 pt-3 border-t border-gray-100 flex gap-2">
               <input
                 className="flex-1 bg-gray-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20"
@@ -240,15 +235,10 @@ function DeliveryMap() {
         <circle cx="140" cy="35" r="9" fill="#F5B700" stroke="white" strokeWidth="2.5"/>
         <text x="140" y="39" textAnchor="middle" fontSize="8" fill="white">🏠</text>
         <circle r="8" fill="#F5B700" stroke="white" strokeWidth="2">
-          <animateMotion dur="5s" repeatCount="indefinite">
-            <mpath href="#del-route"/>
-          </animateMotion>
+          <animateMotion dur="5s" repeatCount="indefinite"><mpath href="#del-route"/></animateMotion>
         </circle>
         <text fontSize="9" textAnchor="middle" dy="4">
-          🛵
-          <animateMotion dur="5s" repeatCount="indefinite">
-            <mpath href="#del-route"/>
-          </animateMotion>
+          🛵<animateMotion dur="5s" repeatCount="indefinite"><mpath href="#del-route"/></animateMotion>
         </text>
       </svg>
     </div>

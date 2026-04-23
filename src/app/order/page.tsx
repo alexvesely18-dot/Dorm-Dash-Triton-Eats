@@ -2,7 +2,9 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronRight, CheckCircle, X, Loader2, Minus, Plus, Upload, AlertCircle } from "lucide-react";
+import { BUILDING_COLLEGE } from "@/lib/orderStore";
 
 const HALLS = [
   { id: "64deg",    name: "64 Degrees",     college: "Revelle",        emoji: "🍳", bg: "bg-orange-50",  border: "border-orange-200" },
@@ -151,6 +153,7 @@ type Extracted = {
 const BUILDINGS = ["Tioga Hall","Tenaya Hall","Tahoe Hall","Shasta Hall","Anza Hall","De Anza Hall","Cuicacalli","Matthews","Rita Atkinson Residences","Mesa Nueva","Marshall Upper/Lower","Warren Apartments","Revelle Dorms"];
 
 export default function OrderPage() {
+  const router = useRouter();
   const [hall, setHall] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [triton, setTriton] = useState(false);
@@ -218,26 +221,27 @@ export default function OrderPage() {
 
   const canSubmit = hall && cartCount > 0 && triton && file && !analyzing && (extracted || ocrError) && building && (!toDoor || room.trim());
 
-  const saveAndGo = () => {
+  const saveAndGo = async () => {
     const hallData = HALLS.find((h) => h.id === hall);
     const doorFee = toDoor ? 2.0 : 0;
-    const order = {
-      hall: hallData?.name,
-      college: hallData?.college,
-      emoji: hallData?.emoji,
-      cart: Object.entries(cart).map(([name, qty]) => `${qty}× ${name}`),
-      triton2go: true,
-      pid_last4: extracted?.pid_last4 ?? null,
-      pickup_time: extracted?.pickup_time ?? null,
-      order_number: extracted?.order_number ?? `TDE-${Math.floor(20000 + Math.random() * 9999)}`,
-      subtotal: `$${cartTotal.toFixed(2)}`,
-      total: `$${(cartTotal * 1.0775 + 1.5 + doorFee).toFixed(2)}`,
+    const payload = {
+      hall:          hallData?.name    ?? "",
+      hallEmoji:     hallData?.emoji   ?? "🍽",
+      hallCollege:   hallData?.college ?? "",
+      cart:          Object.entries(cart).map(([name, qty]) => `${qty}× ${name}`),
+      pid_last4:     extracted?.pid_last4   ?? null,
+      pickup_time:   extracted?.pickup_time ?? null,
+      order_number:  extracted?.order_number ?? null,
+      total:         `$${(cartTotal * 1.0775 + 1.5 + doorFee).toFixed(2)}`,
       building,
-      room: toDoor ? room.trim() : null,
+      deliveryCollege: BUILDING_COLLEGE[building] ?? "",
+      room:          toDoor ? room.trim() : null,
       toDoor,
-      timestamp: new Date().toISOString(),
     };
-    localStorage.setItem("dorm_dash_active_order", JSON.stringify(order));
+    const res  = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const data = await res.json();
+    localStorage.setItem("dorm_dash_order_id", data.id);
+    router.push("/home");
   };
 
   return (
@@ -483,9 +487,9 @@ export default function OrderPage() {
       {/* CTA */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#F8FAFC]/95 backdrop-blur border-t border-gray-100">
         <div className="max-w-md mx-auto">
-          <Link
-            href={canSubmit ? "/chat" : "#"}
-            onClick={(e) => { if (!canSubmit) { e.preventDefault(); return; } saveAndGo(); }}
+          <button
+            onClick={() => { if (canSubmit) saveAndGo(); }}
+            disabled={!canSubmit || analyzing}
             className={`w-full flex items-center justify-center gap-2 font-bold py-4 rounded-2xl shadow-lg transition text-base ${
               canSubmit
                 ? "bg-[#F5B700] text-[#003087] hover:bg-[#e0a800] active:scale-[0.98]"
@@ -493,7 +497,7 @@ export default function OrderPage() {
             }`}
           >
             {analyzing ? <><Loader2 size={18} className="animate-spin"/> Analyzing…</> : <>Submit Order <ChevronRight size={18}/></>}
-          </Link>
+          </button>
           {!canSubmit && !analyzing && (
             <p className="text-center text-xs text-gray-400 mt-2">
               {!hall ? "Select a dining hall" : cartCount === 0 ? "Add at least one item" : !triton ? "Confirm Triton2Go container" : !file ? "Upload your screenshot" : toDoor && !room.trim() ? "Enter your room number" : "Almost there!"}
