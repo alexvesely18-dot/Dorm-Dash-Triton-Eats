@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Bell, Plus, ChevronRight } from "lucide-react";
+import { Bell, Plus, ChevronRight, Star } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import type { Order } from "@/lib/orderStore";
 import { etaMinutes, isHallOpen, hallOpenLabel, getCollegeTheme } from "@/lib/campus";
@@ -41,6 +41,9 @@ export default function HomePage() {
   const [userInitials, setUserInitials] = useState("AT");
   const [theme, setTheme] = useState(getCollegeTheme(null));
   const [recentOrders, setRecentOrders] = useState<{ id: string; hall: string; hallEmoji: string; cart: string[]; total: string; deliveredAt?: string }[]>([]);
+  const [ratingStars, setRatingStars] = useState(0);
+  const [ratingHovered, setRatingHovered] = useState(0);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
   useEffect(() => {
     const id = localStorage.getItem("dorm_dash_order_id");
@@ -240,6 +243,40 @@ export default function HomePage() {
             <p className="text-3xl mb-2">🎉</p>
             <p className="font-black text-green-800">Order Delivered!</p>
             <p className="text-xs text-green-600 mt-1">Enjoy your meal, Triton</p>
+
+            {!ratingSubmitted ? (
+              <div className="mt-4 pt-4 border-t border-green-200">
+                <p className="text-sm font-bold text-green-800 mb-3">
+                  Rate your Dasher{order.dasherName ? `, ${order.dasherName.split(" ")[0]}` : ""}
+                </p>
+                <div className="flex justify-center gap-2 mb-3">
+                  {[1,2,3,4,5].map(n => (
+                    <button
+                      key={n}
+                      onMouseEnter={() => setRatingHovered(n)}
+                      onMouseLeave={() => setRatingHovered(0)}
+                      onClick={() => setRatingStars(n)}
+                    >
+                      <Star
+                        size={28}
+                        className={`transition-all ${(ratingHovered || ratingStars) >= n ? "text-[#F5B700] fill-[#F5B700]" : "text-gray-300"}`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => { if (ratingStars > 0) setRatingSubmitted(true); }}
+                  className={`w-full py-2.5 rounded-2xl text-sm font-bold transition ${ratingStars > 0 ? "bg-green-600 text-white hover:bg-green-700" : "bg-green-100 text-green-400 cursor-not-allowed"}`}
+                >
+                  Submit Rating
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 pt-4 border-t border-green-200 flex items-center justify-center gap-2">
+                <span className="text-xl">⭐</span>
+                <p className="text-sm font-bold text-green-700">Thanks for your feedback!</p>
+              </div>
+            )}
           </div>
         ) : null}
 

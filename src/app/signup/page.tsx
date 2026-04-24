@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, User, BookOpen } from "lucide-react";
 
@@ -20,6 +20,11 @@ export default function SignUpPage() {
   const [building, setBuilding] = useState("");
   const [emailError, setEmailError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  // Redirect if already signed up
+  useEffect(() => {
+    if (localStorage.getItem("user_name")) router.replace("/home");
+  }, [router]);
 
   const validateEmail = (val: string) => {
     if (!val) { setEmailError(""); return; }
@@ -42,11 +47,13 @@ export default function SignUpPage() {
   const handleSubmit = () => {
     if (!canSubmit || submitted) return;
     setSubmitted(true);
-    localStorage.setItem("user_name", `${firstName.trim()} ${lastName.trim()}`);
-    localStorage.setItem("user_first", firstName.trim());
-    localStorage.setItem("user_email", email);
-    localStorage.setItem("user_college", college);
+    localStorage.setItem("user_name",     `${firstName.trim()} ${lastName.trim()}`);
+    localStorage.setItem("user_first",    firstName.trim());
+    localStorage.setItem("user_email",    email);
+    localStorage.setItem("user_college",  college);
     localStorage.setItem("user_building", building);
+    localStorage.setItem("user_username", username.trim());
+    localStorage.setItem("user_phone",    phone.trim());
     router.push("/home");
   };
 
