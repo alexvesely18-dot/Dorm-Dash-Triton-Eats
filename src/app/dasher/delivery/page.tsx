@@ -192,8 +192,8 @@ export default function DasherDeliveryPage() {
           </div>
         </div>
 
-        {/* Live Map */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        {/* Live Map — hidden while chat is open */}
+        <div className={`bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden${showChat ? " hidden" : ""}`}>
           <div className="px-4 pt-4 pb-2 flex items-center justify-between">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Live Route</p>
             <span className="text-[10px] text-green-600 font-semibold flex items-center gap-1">
