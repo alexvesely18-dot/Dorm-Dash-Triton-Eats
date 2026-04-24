@@ -192,29 +192,31 @@ export default function DasherDeliveryPage() {
           </div>
         </div>
 
-        {/* Live Map */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Live Route</p>
-            <span className="text-[10px] text-green-600 font-semibold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse inline-block"/>
-              GPS Active
-            </span>
+        {/* Live Map — unmounted while chat is open so Leaflet z-indexes don't bleed through */}
+        {!showChat && (
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Live Route</p>
+              <span className="text-[10px] text-green-600 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse inline-block"/>
+                GPS Active
+              </span>
+            </div>
+            <div style={{ height: 200 }}>
+              <LiveMap
+                hallLat={order.hallLat}
+                hallLng={order.hallLng}
+                hallName={order.hall}
+                hallEmoji={order.hallEmoji}
+                destLat={order.destLat}
+                destLng={order.destLng}
+                building={order.building}
+                dasherLat={order.dasherLat}
+                dasherLng={order.dasherLng}
+              />
+            </div>
           </div>
-          <div style={{ height: 200 }}>
-            <LiveMap
-              hallLat={order.hallLat}
-              hallLng={order.hallLng}
-              hallName={order.hall}
-              hallEmoji={order.hallEmoji}
-              destLat={order.destLat}
-              destLng={order.destLng}
-              building={order.building}
-              dasherLat={order.dasherLat}
-              dasherLng={order.dasherLng}
-            />
-          </div>
-        </div>
+        )}
 
         {/* Order Summary */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
