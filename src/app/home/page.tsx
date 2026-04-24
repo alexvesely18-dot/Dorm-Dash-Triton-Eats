@@ -78,6 +78,7 @@ export default function HomePage() {
         if (alive) setOrder(data.order);
         if (data.order?.status === "delivered") {
           localStorage.removeItem("dorm_dash_order_id");
+          if (alive) setOrderId(null); // stop polling
           // Mark matching history entry as delivered
           try {
             const history = JSON.parse(localStorage.getItem("student_history") ?? "[]");
