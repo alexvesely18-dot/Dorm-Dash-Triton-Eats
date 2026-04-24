@@ -36,6 +36,12 @@ export default function DasherHomePage() {
   const [history, setHistory] = useState<DasherDelivery[]>([]);
   const [tab, setTab] = useState<"dashboard" | "history">("dashboard");
   const shownIds = useRef<Set<string>>(new Set());
+  // Ref mirrors state so the polling closure always reads the current value
+  const incomingOrderRef = useRef<Order | null>(null);
+
+  useEffect(() => {
+    incomingOrderRef.current = incomingOrder;
+  }, [incomingOrder]);
 
   useEffect(() => {
     setDasherName(localStorage.getItem("dasher_name") ?? "Dasher");
@@ -45,11 +51,25 @@ export default function DasherHomePage() {
       const raw = localStorage.getItem("dasher_history");
       if (raw) setHistory(JSON.parse(raw));
     } catch {}
+    // If a delivery is already in-progress, go straight to the right page
+    const claimed = localStorage.getItem("dasher_claimed_order_id");
+    if (claimed) {
+      fetch(`/api/orders/${claimed}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.order?.status === "claimed") window.location.href = "/dasher/pickup";
+          else if (d.order?.status === "picked_up") window.location.href = "/dasher/delivery";
+          else localStorage.removeItem("dasher_claimed_order_id");
+        })
+        .catch(() => {});
+    }
   }, []);
 
   // Poll for available orders when active
   useEffect(() => {
     if (!active) { setIncomingOrder(null); return; }
+    // Reset dismissed list so any pending orders are re-evaluated
+    shownIds.current = new Set();
     let alive = true;
 
     const poll = async () => {
@@ -59,7 +79,8 @@ export default function DasherHomePage() {
         const data = await res.json();
         const orders: Order[] = data.orders ?? [];
         const next = orders.find(o => !shownIds.current.has(o.id));
-        if (alive && next && !incomingOrder) {
+        // Use ref (not stale closure) to avoid resetting countdown on every poll
+        if (alive && next && !incomingOrderRef.current) {
           setIncomingOrder(next);
           setCountdown(15);
         }
@@ -69,7 +90,6 @@ export default function DasherHomePage() {
     poll();
     const interval = setInterval(poll, 3000);
     return () => { alive = false; clearInterval(interval); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, dasherCollege]);
 
   // Countdown timer
@@ -105,6 +125,7 @@ export default function DasherHomePage() {
         return;
       }
       const data = await res.json();
+      if (!data.order?.id) { setClaiming(false); return; }
       localStorage.setItem("dasher_claimed_order_id", data.order.id);
       window.location.href = "/dasher/pickup";
     } catch {

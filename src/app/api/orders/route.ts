@@ -41,12 +41,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid college" }, { status: 400 });
   }
 
-  // Count food vs drink items for pricing engine
-  const cart = Array.isArray(body.cart) ? body.cart : [];
+  // Parse cart — items may be objects {name, quantity, type} or legacy strings
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const foodItems  = cart.filter((i: any) => i.type === "food").reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0);
+  const rawCart: any[] = Array.isArray(body.cart) ? body.cart : [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const drinkItems = cart.filter((i: any) => i.type === "drink").reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0);
+  const foodItems  = rawCart.filter((i: any) => i.type === "food").reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const drinkItems = rawCart.filter((i: any) => i.type === "drink").reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0);
+  // Normalise to human-readable strings for storage and dasher display
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cart: string[] = rawCart.map((i: any) =>
+    typeof i === "string" ? i : `${Number(i.quantity) || 1}× ${String(i.name)}`
+  );
 
   const breakdown = calculateOrder({
     hall: hallId,
@@ -68,12 +74,12 @@ export async function POST(req: NextRequest) {
   const order: Order = {
     id,
     status:          "pending",
-    hall:            String(body.hall          ?? ""),
+    hall:            DINING_HALLS[hallId].name,
     hallEmoji:       String(body.hallEmoji     ?? "🍽"),
     hallCollege:     String(body.hallCollege   ?? ""),
     hallLat:         Number(body.hallLat)      || 0,
     hallLng:         Number(body.hallLng)      || 0,
-    cart:            cart.map(String),
+    cart,
     pid_last4:       body.pid_last4    != null ? String(body.pid_last4)    : null,
     pickup_time:     body.pickup_time  != null ? String(body.pickup_time)  : null,
     order_number:    String(body.order_number  ?? id),

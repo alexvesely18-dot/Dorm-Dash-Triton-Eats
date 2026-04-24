@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { MapPin, Package, MessageCircle, CheckCircle, ChevronRight, Building2 } from "lucide-react";
@@ -12,19 +12,47 @@ export default function DasherDeliveryPage() {
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [showChat, setShowChat] = useState(false);
-  const [messages, setMessages] = useState([
-    { from: "student", text: "Hey! I'm in my room, door on the left 👋" },
-  ]);
+  const [messages, setMessages] = useState<{from:string;text:string;at:string}[]>([]);
   const [input, setInput] = useState("");
   const [delivering, setDelivering] = useState(false);
+  const [sending, setSending] = useState(false);
+  const chatEnd = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const id = localStorage.getItem("dasher_claimed_order_id");
-    if (!id) return;
+    if (!id) { router.replace("/dasher/home"); return; }
     fetch(`/api/orders/${id}`)
-      .then(r => r.json())
-      .then(d => { if (d.order) setOrder(d.order); })
+      .then(r => {
+        if (r.status === 404) {
+          localStorage.removeItem("dasher_claimed_order_id");
+          router.replace("/dasher/home");
+          return null;
+        }
+        return r.json();
+      })
+      .then(d => { if (d?.order) setOrder(d.order); })
       .catch(() => {});
+  }, [router]);
+
+  // Poll messages every 2s when chat is open (and always in background to show badge)
+  useEffect(() => {
+    const id = localStorage.getItem("dasher_claimed_order_id");
+    if (!id) return;
+    let alive = true;
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/orders/${id}/message`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (alive) {
+          setMessages(data.messages ?? []);
+          if (chatEnd.current) chatEnd.current.scrollIntoView({ behavior: "smooth" });
+        }
+      } catch {}
+    };
+    poll();
+    const interval = setInterval(poll, 2000);
+    return () => { alive = false; clearInterval(interval); };
   }, []);
 
   // Continuously broadcast dasher GPS (throttled to every 5s)
@@ -45,25 +73,43 @@ export default function DasherDeliveryPage() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  const send = () => {
-    if (!input.trim()) return;
-    setMessages(m => [...m, { from: "dasher", text: input.trim() }]);
+  const send = async () => {
+    const id = localStorage.getItem("dasher_claimed_order_id");
+    if (!input.trim() || !id || sending) return;
+    const text = input.trim();
     setInput("");
-    setTimeout(() => {
-      setMessages(m => [...m, { from: "student", text: "Thanks, see you soon! 🙏" }]);
-    }, 1500);
+    setSending(true);
+    try {
+      await fetch(`/api/orders/${id}/message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from: "dasher", text }),
+      });
+      const res = await fetch(`/api/orders/${id}/message`);
+      const data = await res.json();
+      setMessages(data.messages ?? []);
+      if (chatEnd.current) chatEnd.current.scrollIntoView({ behavior: "smooth" });
+    } catch {} finally {
+      setSending(false);
+    }
   };
 
   const markDelivered = async () => {
     if (!order || delivering) return;
     setDelivering(true);
-    await fetch(`/api/orders/${order.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "delivered" }),
-    });
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "delivered" }),
+      });
+      if (!res.ok) { setDelivering(false); return; }
+    } catch {
+      setDelivering(false);
+      return;
+    }
 
-    // Persist to dasher history in localStorage
+    // Only update local state after backend confirms
     try {
       const entry = {
         id: order.id,
@@ -201,7 +247,7 @@ export default function DasherDeliveryPage() {
             </div>
             <div className="text-left">
               <p className="font-bold text-gray-800">Chat with Student</p>
-              <p className="text-xs text-gray-400">1 new message</p>
+              <p className="text-xs text-gray-400">{messages.length > 0 ? `${messages.length} message${messages.length !== 1 ? "s" : ""}` : "No messages yet"}</p>
             </div>
           </div>
           <ChevronRight size={16} className="text-gray-400"/>
@@ -231,6 +277,9 @@ export default function DasherDeliveryPage() {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+              {messages.length === 0 && (
+                <p className="text-center text-gray-400 text-sm mt-6">No messages yet — send one!</p>
+              )}
               {messages.map((m, i) => (
                 <div key={i} className={`flex ${m.from === "dasher" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[75%] px-4 py-2.5 text-sm ${m.from === "dasher" ? "bubble-user" : "bubble-dasher text-gray-800"}`}>
@@ -238,6 +287,7 @@ export default function DasherDeliveryPage() {
                   </div>
                 </div>
               ))}
+              <div ref={chatEnd}/>
             </div>
             <div className="px-4 pb-6 pt-3 border-t border-gray-100 flex gap-2">
               <input
@@ -247,7 +297,7 @@ export default function DasherDeliveryPage() {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") send(); }}
               />
-              <button onClick={send} className="w-10 h-10 bg-[#003087] rounded-full flex items-center justify-center text-white flex-shrink-0">
+              <button onClick={send} disabled={!input.trim() || sending} className="w-10 h-10 bg-[#003087] rounded-full flex items-center justify-center text-white flex-shrink-0 disabled:opacity-40">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
               </button>
             </div>

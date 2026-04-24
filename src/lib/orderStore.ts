@@ -31,6 +31,7 @@ export type Order = {
   scheduledFor?: string;
   batched?: boolean;
   batchDasher?: string;
+  messages?: { from: string; text: string; at: string }[];
 };
 
 // Map each building to the college that owns it — used to gate door-delivery claims
