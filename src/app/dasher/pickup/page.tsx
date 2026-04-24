@@ -12,12 +12,19 @@ export default function DasherPickupPage() {
 
   useEffect(() => {
     const id = localStorage.getItem("dasher_claimed_order_id");
-    if (!id) return;
+    if (!id) { router.replace("/dasher/home"); return; }
     fetch(`/api/orders/${id}`)
-      .then(r => r.json())
-      .then(d => { if (d.order) setOrder(d.order); })
+      .then(r => {
+        if (r.status === 404) {
+          localStorage.removeItem("dasher_claimed_order_id");
+          router.replace("/dasher/home");
+          return null;
+        }
+        return r.json();
+      })
+      .then(d => { if (d?.order) setOrder(d.order); })
       .catch(() => {});
-  }, []);
+  }, [router]);
 
   // Broadcast dasher GPS position every 5 seconds while on this screen
   useEffect(() => {

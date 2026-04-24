@@ -252,17 +252,22 @@ export default function OrderPage() {
     const reader = new FileReader();
     reader.onload = async (ev) => {
       const base64 = (ev.target?.result as string).split(",")[1];
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
       try {
         const res = await fetch("/api/analyze-screenshot", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageBase64: base64, mimeType: f.type || "image/jpeg" }),
+          signal: controller.signal,
         });
         const json = await res.json();
         if (json.success) setExtracted(json.data);
         else setOcrError(true);
       } catch {
         setOcrError(true);
+      } finally {
+        clearTimeout(timeout);
       }
       setAnalyzing(false);
     };

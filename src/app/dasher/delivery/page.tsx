@@ -20,12 +20,19 @@ export default function DasherDeliveryPage() {
 
   useEffect(() => {
     const id = localStorage.getItem("dasher_claimed_order_id");
-    if (!id) return;
+    if (!id) { router.replace("/dasher/home"); return; }
     fetch(`/api/orders/${id}`)
-      .then(r => r.json())
-      .then(d => { if (d.order) setOrder(d.order); })
+      .then(r => {
+        if (r.status === 404) {
+          localStorage.removeItem("dasher_claimed_order_id");
+          router.replace("/dasher/home");
+          return null;
+        }
+        return r.json();
+      })
+      .then(d => { if (d?.order) setOrder(d.order); })
       .catch(() => {});
-  }, []);
+  }, [router]);
 
   // Poll messages every 2s when chat is open (and always in background to show badge)
   useEffect(() => {
@@ -90,13 +97,19 @@ export default function DasherDeliveryPage() {
   const markDelivered = async () => {
     if (!order || delivering) return;
     setDelivering(true);
-    await fetch(`/api/orders/${order.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "delivered" }),
-    });
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "delivered" }),
+      });
+      if (!res.ok) { setDelivering(false); return; }
+    } catch {
+      setDelivering(false);
+      return;
+    }
 
-    // Persist to dasher history in localStorage
+    // Only update local state after backend confirms
     try {
       const entry = {
         id: order.id,

@@ -125,6 +125,7 @@ export default function DasherHomePage() {
         return;
       }
       const data = await res.json();
+      if (!data.order?.id) { setClaiming(false); return; }
       localStorage.setItem("dasher_claimed_order_id", data.order.id);
       window.location.href = "/dasher/pickup";
     } catch {
