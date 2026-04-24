@@ -18,26 +18,30 @@ export default function LoginPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#003087]">
-      <div className="flex-1 flex flex-col items-center justify-center px-6 pt-16 pb-8 text-white">
-        <div className="animate-float text-6xl mb-5 select-none">🛵</div>
-        <h1 className="text-4xl font-black tracking-tight">Dorm Dash</h1>
-        <p className="text-white/60 mt-2 text-base">UCSD Triton Eats Delivery</p>
+    <div className="min-h-screen flex flex-col bg-[#003087] relative overflow-hidden">
+      <div className="absolute inset-0 gradient-animate opacity-90 pointer-events-none"/>
+      <div className="absolute -top-20 -left-20 w-72 h-72 bg-[#F5B700]/25 rounded-full blur-3xl animate-float pointer-events-none"/>
+      <div className="absolute top-40 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-float pointer-events-none" style={{animationDelay:'1.5s'}}/>
+
+      <div className="relative flex-1 flex flex-col items-center justify-center px-6 pt-16 pb-8 text-white">
+        <div className="animate-float text-7xl mb-5 select-none drop-shadow-2xl">🛵</div>
+        <h1 className="text-5xl font-black tracking-tight animate-slide-up">Dorm Dash</h1>
+        <p className="text-white/70 mt-2 text-base animate-slide-up stagger-1">UCSD Triton Eats Delivery</p>
         <div className="flex gap-2 mt-6 flex-wrap justify-center">
-          {["Fast Pickup", "Triton2Go ✓", "Dorm Delivery"].map((t) => (
-            <span key={t} className="bg-white/15 text-white/90 text-xs font-medium px-3 py-1.5 rounded-full">{t}</span>
+          {["Fast Pickup", "Triton2Go ✓", "Dorm Delivery"].map((t, i) => (
+            <span key={t} className={`bg-white/15 backdrop-blur text-white/90 text-xs font-medium px-3 py-1.5 rounded-full border border-white/10 animate-pop-in stagger-${i+2}`}>{t}</span>
           ))}
         </div>
       </div>
 
-      <div className="bg-[#F8FAFC] rounded-t-[2rem] px-6 pt-6 pb-10 shadow-2xl">
+      <div className="relative bg-[#F8FAFC] rounded-t-[2rem] px-6 pt-6 pb-10 shadow-2xl animate-slide-up stagger-2">
         <div className="flex bg-gray-100 rounded-2xl p-1 mb-6">
           {(["student", "dasher"] as const).map((role) => (
             <button
               key={role}
               onClick={() => setTab(role)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                tab === role ? "bg-white text-[#003087] shadow-sm" : "text-gray-400 hover:text-gray-600"
+              className={`flex-1 py-2.5 rounded-xl text-sm font-bold press transition-all ${
+                tab === role ? "bg-white text-[#003087] shadow-md" : "text-gray-400 hover:text-gray-600"
               }`}
             >
               {role === "student" ? "🎓 Student" : "🛵 Dasher"}
@@ -84,7 +88,7 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-            <Link href="/home" className="mt-1 w-full flex items-center justify-center bg-[#F5B700] text-[#003087] font-bold py-4 rounded-2xl shadow-lg hover:bg-[#e0a800] transition active:scale-[0.98] text-base">
+            <Link href="/home" className="mt-1 w-full flex items-center justify-center bg-[#F5B700] text-[#003087] font-bold py-4 rounded-2xl shadow-lg hover:bg-[#e0a800] hover:shadow-xl press text-base animate-glow-pulse">
               Sign In →
             </Link>
             <div className="flex items-center gap-3">
@@ -142,7 +146,7 @@ export default function LoginPage() {
                 <span key={t} className="bg-[#003087]/8 text-[#003087] text-xs font-medium px-2.5 py-1 rounded-full border border-[#003087]/15">{t}</span>
               ))}
             </div>
-            <Link href="/dasher/home" className="w-full flex items-center justify-center bg-[#F5B700] text-[#003087] font-bold py-4 rounded-2xl shadow-lg hover:bg-[#e0a800] transition active:scale-[0.98] text-base">
+            <Link href="/dasher/home" className="w-full flex items-center justify-center bg-[#F5B700] text-[#003087] font-bold py-4 rounded-2xl shadow-lg hover:bg-[#e0a800] hover:shadow-xl press text-base animate-glow-pulse">
               Sign In as Dasher →
             </Link>
             <div className="flex items-center gap-3">
