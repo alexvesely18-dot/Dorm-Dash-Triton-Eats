@@ -66,7 +66,14 @@ export default function HomePage() {
     const poll = async () => {
       try {
         const res = await fetch(`/api/orders/${orderId}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          // Order no longer exists (server restart cleared store) — remove stale ID
+          if (res.status === 404 && alive) {
+            localStorage.removeItem("dorm_dash_order_id");
+            setOrderId(null);
+          }
+          return;
+        }
         const data = await res.json();
         if (alive) setOrder(data.order);
         if (data.order?.status === "delivered") {
@@ -133,10 +140,18 @@ export default function HomePage() {
 
         {/* Active Order — loading skeleton while first poll is in-flight */}
         {orderId && !order && (
-          <div className="mt-5 bg-white rounded-3xl shadow-lg border border-gray-100 p-5 animate-pulse">
-            <div className="h-3 bg-gray-100 rounded-full w-24 mb-3"/>
-            <div className="h-5 bg-gray-100 rounded-full w-48 mb-2"/>
-            <div className="h-3 bg-gray-100 rounded-full w-36"/>
+          <div className="mt-5 bg-white rounded-3xl shadow-lg border border-gray-100 p-5">
+            <div className="animate-pulse">
+              <div className="h-3 bg-gray-100 rounded-full w-24 mb-3"/>
+              <div className="h-5 bg-gray-100 rounded-full w-48 mb-2"/>
+              <div className="h-3 bg-gray-100 rounded-full w-36"/>
+            </div>
+            <button
+              onClick={() => { localStorage.removeItem("dorm_dash_order_id"); setOrderId(null); }}
+              className="mt-3 text-xs text-gray-400 hover:text-red-400 transition"
+            >
+              × Cancel pending order
+            </button>
           </div>
         )}
 
