@@ -34,7 +34,11 @@ export default function DasherHomePage() {
   const [dasherTransport, setDasherTransport] = useState("bike");
   const [claiming, setClaiming] = useState(false);
   const [history, setHistory] = useState<DasherDelivery[]>([]);
-  const [tab, setTab] = useState<"dashboard" | "history">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "history" | "profile">("dashboard");
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState("");
+  const [editingCollege, setEditingCollege] = useState(false);
+  const [draftCollege, setDraftCollege] = useState("");
   const shownIds = useRef<Set<string>>(new Set());
   // Ref mirrors state so the polling closure always reads the current value
   const incomingOrderRef = useRef<Order | null>(null);
@@ -227,7 +231,8 @@ export default function DasherHomePage() {
         <div className="mt-4 flex bg-gray-100 rounded-2xl p-1 gap-1">
           {([
             { id: "dashboard", label: "Earnings" },
-            { id: "history",   label: history.length > 0 ? `Past Orders (${history.length})` : "Past Orders" },
+            { id: "history",   label: history.length > 0 ? `History (${history.length})` : "History" },
+            { id: "profile",   label: "Profile" },
           ] as const).map(t => (
             <button
               key={t.id}
@@ -291,6 +296,84 @@ export default function DasherHomePage() {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {/* Profile tab */}
+        {tab === "profile" && (
+          <div className="mt-3 flex flex-col gap-3">
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Dasher Info</p>
+
+              {/* Name */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 mb-1">Name</p>
+                {editingName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      value={draftName}
+                      onChange={e => setDraftName(e.target.value)}
+                      className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20"
+                    />
+                    <button onClick={() => { const n = draftName.trim() || dasherName; setDasherName(n); localStorage.setItem("dasher_name", n); setEditingName(false); }} className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">✓</button>
+                    <button onClick={() => setEditingName(false)} className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 text-xs">✕</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-800">{dasherName}</p>
+                    <button onClick={() => { setDraftName(dasherName); setEditingName(true); }} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#003087" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* College */}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-semibold text-gray-400 mb-1">College</p>
+                {editingCollege ? (
+                  <div className="flex items-center gap-2">
+                    <select value={draftCollege} onChange={e => setDraftCollege(e.target.value)} className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none">
+                      <option value="">All colleges (lobby only)</option>
+                      {["Revelle College","Muir College","Marshall College","Warren College","Roosevelt College","Sixth College","Seventh College","Eighth College"].map(c => <option key={c}>{c}</option>)}
+                    </select>
+                    <button onClick={() => { setDasherCollege(draftCollege); localStorage.setItem("dasher_college", draftCollege); setEditingCollege(false); }} className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">✓</button>
+                    <button onClick={() => setEditingCollege(false)} className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 text-xs flex-shrink-0">✕</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-800">{dasherCollege || "All colleges (lobby only)"}</p>
+                    <button onClick={() => { setDraftCollege(dasherCollege); setEditingCollege(true); }} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#003087" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Transport */}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-semibold text-gray-400 mb-2">Transport</p>
+                <div className="flex gap-2">
+                  {(["bike", "scooter"] as const).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => { setDasherTransport(t); localStorage.setItem("dasher_transport", t); }}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition border-2 ${dasherTransport === t ? "border-[#003087] bg-[#003087]/5 text-[#003087]" : "border-gray-200 text-gray-400"}`}
+                    >
+                      {t === "bike" ? "🚲 Bike" : "🛵 Scooter"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => { ["dasher_name","dasher_college","dasher_transport","dasher_claimed_order_id"].forEach(k => localStorage.removeItem(k)); window.location.href = "/dasher"; }}
+              className="w-full flex items-center justify-center gap-2 bg-white border-2 border-red-200 text-red-500 font-bold py-4 rounded-2xl shadow-sm hover:bg-red-50 transition"
+            >
+              Sign Out
+            </button>
           </div>
         )}
 

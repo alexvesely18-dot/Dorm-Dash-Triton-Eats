@@ -78,6 +78,7 @@ export default function HomePage() {
         if (alive) setOrder(data.order);
         if (data.order?.status === "delivered") {
           localStorage.removeItem("dorm_dash_order_id");
+          if (alive) setOrderId(null); // stop polling
           // Mark matching history entry as delivered
           try {
             const history = JSON.parse(localStorage.getItem("student_history") ?? "[]");
@@ -146,12 +147,6 @@ export default function HomePage() {
               <div className="h-5 bg-gray-100 rounded-full w-48 mb-2"/>
               <div className="h-3 bg-gray-100 rounded-full w-36"/>
             </div>
-            <button
-              onClick={() => { localStorage.removeItem("dorm_dash_order_id"); setOrderId(null); }}
-              className="mt-3 text-xs text-gray-400 hover:text-red-400 transition"
-            >
-              × Cancel pending order
-            </button>
           </div>
         )}
 

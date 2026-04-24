@@ -64,6 +64,7 @@ export default function ChatPage() {
       });
       // Immediately re-poll
       const res = await fetch(`/api/orders/${orderId}/message`);
+      if (!res.ok) return;
       const data = await res.json();
       setMsgs(data.messages ?? []);
     } catch {} finally {

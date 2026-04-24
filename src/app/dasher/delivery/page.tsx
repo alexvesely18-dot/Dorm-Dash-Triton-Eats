@@ -192,31 +192,29 @@ export default function DasherDeliveryPage() {
           </div>
         </div>
 
-        {/* Live Map — unmounted while chat is open so Leaflet z-indexes don't bleed through */}
-        {!showChat && (
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Live Route</p>
-              <span className="text-[10px] text-green-600 font-semibold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse inline-block"/>
-                GPS Active
-              </span>
-            </div>
-            <div style={{ height: 200 }}>
-              <LiveMap
-                hallLat={order.hallLat}
-                hallLng={order.hallLng}
-                hallName={order.hall}
-                hallEmoji={order.hallEmoji}
-                destLat={order.destLat}
-                destLng={order.destLng}
-                building={order.building}
-                dasherLat={order.dasherLat}
-                dasherLng={order.dasherLng}
-              />
-            </div>
+        {/* Live Map */}
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Live Route</p>
+            <span className="text-[10px] text-green-600 font-semibold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse inline-block"/>
+              GPS Active
+            </span>
           </div>
-        )}
+          <div style={{ height: 200 }}>
+            <LiveMap
+              hallLat={order.hallLat}
+              hallLng={order.hallLng}
+              hallName={order.hall}
+              hallEmoji={order.hallEmoji}
+              destLat={order.destLat}
+              destLng={order.destLng}
+              building={order.building}
+              dasherLat={order.dasherLat}
+              dasherLng={order.dasherLng}
+            />
+          </div>
+        </div>
 
         {/* Order Summary */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
@@ -269,7 +267,7 @@ export default function DasherDeliveryPage() {
 
       {/* Chat sheet */}
       {showChat && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setShowChat(false)}>
+        <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/40" onClick={() => setShowChat(false)}>
           <div className="w-full max-w-md bg-white rounded-t-3xl flex flex-col" style={{ height: "70vh" }} onClick={e => e.stopPropagation()}>
             <div className="px-5 pt-4 pb-3 border-b border-gray-100 flex items-center gap-3">
               <div className="w-10 h-10 bg-[#F5B700] rounded-full flex items-center justify-center text-[#003087] font-black text-sm flex-shrink-0">AT</div>
