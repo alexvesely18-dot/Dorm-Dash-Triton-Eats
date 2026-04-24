@@ -215,6 +215,22 @@ export default function OrderPage() {
       { timeout: 8000 }
     );
   }, []);
+
+  // Redirect back to /home if the student already has an active order
+  useEffect(() => {
+    const existingId = localStorage.getItem("dorm_dash_order_id");
+    if (!existingId) return;
+    fetch(`/api/orders/${existingId}`)
+      .then(r => { if (!r.ok) { localStorage.removeItem("dorm_dash_order_id"); return null; } return r.json(); })
+      .then(d => {
+        if (d?.order && d.order.status !== "delivered") {
+          router.replace("/home");
+        } else {
+          localStorage.removeItem("dorm_dash_order_id");
+        }
+      })
+      .catch(() => {});
+  }, [router]);
   const [toDoor, setToDoor] = useState(false);
   const [room, setRoom] = useState("");
   const [scheduleMode, setScheduleMode] = useState(false);

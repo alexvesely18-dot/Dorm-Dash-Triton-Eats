@@ -83,7 +83,10 @@ export default function OrdersPage() {
 
   const toggle = (id: string) => setExpanded(prev => prev === id ? null : id);
 
-  const pastOrders = history.filter(o => o.status === "delivered");
+  // Exclude the live activeOrder from history to avoid duplicates
+  const nonActiveHistory = activeOrder ? history.filter(o => o.id !== activeOrder.id) : history;
+  const inProgressHistory = nonActiveHistory.filter(o => o.status !== "delivered");
+  const pastOrders = nonActiveHistory.filter(o => o.status === "delivered");
   const hasAny = history.length > 0 || activeOrder;
 
   return (
@@ -173,6 +176,35 @@ export default function OrdersPage() {
                       </ul>
                     )}
                   </div>
+                </div>
+              </section>
+            )}
+
+            {/* In-progress orders from history (when active server order isn't available) */}
+            {inProgressHistory.length > 0 && (
+              <section>
+                <SectionLabel text="In Progress" dot />
+                <div className="flex flex-col gap-3">
+                  {inProgressHistory.map((o) => {
+                    const badge = statusLabel(o.status);
+                    return (
+                      <div key={o.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-4 py-3.5 flex items-center gap-3">
+                          <div className={`w-11 h-11 ${HALL_BG[o.hall] ?? "bg-gray-100"} rounded-xl flex items-center justify-center text-2xl flex-shrink-0`}>
+                            {o.hallEmoji}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="font-bold text-sm text-gray-900">{o.hall}</p>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.text}</span>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-0.5">{formatDate(o.placedAt)}</p>
+                            <p className="text-xs font-bold mt-1" style={{ color: theme.accent }}>{o.total}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
             )}
