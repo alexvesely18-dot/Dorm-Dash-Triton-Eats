@@ -44,14 +44,22 @@ export default function DasherPickupPage() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
+  const [starting, setStarting] = useState(false);
+
   const markPickedUp = async () => {
-    if (!order) return;
-    setConfirmed(true);
-    await fetch(`/api/orders/${order.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "picked_up" }),
-    });
+    if (!order || starting) return;
+    setStarting(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "picked_up" }),
+      });
+      if (!res.ok) { setStarting(false); return; }
+    } catch {
+      setStarting(false);
+      return;
+    }
     router.push("/dasher/delivery");
   };
 
@@ -154,9 +162,10 @@ export default function DasherPickupPage() {
         ) : (
           <button
             onClick={markPickedUp}
-            className="w-full flex items-center justify-center gap-2 bg-[#F5B700] text-[#003087] font-black py-4 rounded-2xl shadow-lg hover:bg-[#e0a800] transition active:scale-[0.98] text-base animate-fade-in"
+            disabled={starting}
+            className="w-full flex items-center justify-center gap-2 bg-[#F5B700] text-[#003087] font-black py-4 rounded-2xl shadow-lg hover:bg-[#e0a800] transition active:scale-[0.98] text-base animate-fade-in disabled:opacity-60"
           >
-            Start Delivery →
+            {starting ? "Starting…" : "Start Delivery →"}
           </button>
         )}
       </main>
