@@ -63,20 +63,23 @@ export default function AdminDashboard() {
 
   const assignOrder = async (orderId: string) => {
     if (!assignName.trim()) return;
-    await fetch(`/api/orders/${orderId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        status: "claimed",
-        dasherName: assignName.trim(),
-        dasherTransport: assignTransport,
-        claimedAt: new Date().toISOString(),
-      }),
-    });
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "claimed",
+          dasherName: assignName.trim(),
+          dasherTransport: assignTransport,
+          claimedAt: new Date().toISOString(),
+        }),
+      });
+      if (!res.ok) return;
+    } catch { return; }
     setAssigning(null);
     setAssignName("");
     setAssignCollege("");
-    fetchOrders();
+    await fetchOrders();
   };
 
   const live    = orders.filter(o => o.status !== "delivered");
