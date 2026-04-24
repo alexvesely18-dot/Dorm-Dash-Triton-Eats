@@ -1,16 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Shield } from "lucide-react";
 
 const ADMIN_EMAIL = "avesely@ucsd.edu";
 const ADMIN_PASS  = "Password124!";
 
 export default function AdminLoginPage() {
+  const router = useRouter();
   const [email, setEmail]   = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow]     = useState(false);
   const [error, setError]   = useState(false);
+
+  // Skip login if already authenticated
+  useEffect(() => {
+    if (localStorage.getItem("admin_authed") === "1") {
+      router.replace("/admin/dashboard");
+    }
+  }, [router]);
 
   const login = () => {
     if (email.trim() === ADMIN_EMAIL && password === ADMIN_PASS) {
