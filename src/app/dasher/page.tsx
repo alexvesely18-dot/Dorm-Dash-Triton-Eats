@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
@@ -22,6 +22,16 @@ export default function DasherLoginPage() {
   const [name, setName] = useState("");
   const [college, setCollege] = useState(COLLEGES[0]);
   const [transport, setTransport] = useState<"bike" | "scooter">("bike");
+
+  // Restore previous session on mount
+  useEffect(() => {
+    const savedName = localStorage.getItem("dasher_name");
+    const savedCollege = localStorage.getItem("dasher_college");
+    const savedTransport = localStorage.getItem("dasher_transport") as "bike" | "scooter" | null;
+    if (savedName) setName(savedName);
+    if (savedCollege) setCollege(savedCollege);
+    if (savedTransport === "bike" || savedTransport === "scooter") setTransport(savedTransport);
+  }, []);
 
   const signIn = () => {
     if (!name.trim()) return;
