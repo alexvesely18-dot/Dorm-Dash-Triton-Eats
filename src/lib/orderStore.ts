@@ -71,8 +71,25 @@ export const BUILDING_COORDS: Record<string, { lat: number; lng: number }> = {
 declare global {
   // eslint-disable-next-line no-var
   var _orderStore: Map<string, Order> | undefined;
+  // eslint-disable-next-line no-var
+  var _orderSweepInterval: NodeJS.Timeout | undefined;
 }
 
 // Persist across hot-reloads in development
 export const orderStore: Map<string, Order> =
   global._orderStore ?? (global._orderStore = new Map());
+
+// Hourly sweep: wipe any in-progress order (pending/claimed/picked_up) older than 1 hour.
+// Keeps demo state clean and prevents orphan orders from zombie clients.
+const ONE_HOUR_MS = 60 * 60 * 1000;
+if (!global._orderSweepInterval) {
+  global._orderSweepInterval = setInterval(() => {
+    const cutoff = Date.now() - ONE_HOUR_MS;
+    for (const [id, order] of orderStore) {
+      if (order.status === "delivered") continue;
+      if (new Date(order.createdAt).getTime() < cutoff) {
+        orderStore.delete(id);
+      }
+    }
+  }, ONE_HOUR_MS);
+}

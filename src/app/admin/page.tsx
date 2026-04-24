@@ -4,29 +4,42 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Shield } from "lucide-react";
 
-const ADMIN_EMAIL = "avesely@ucsd.edu";
-const ADMIN_PASS  = "Password124!";
-
 export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail]   = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow]     = useState(false);
   const [error, setError]   = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Skip login if already authenticated
   useEffect(() => {
-    if (localStorage.getItem("admin_authed") === "1") {
+    if (localStorage.getItem("admin_token")) {
       router.replace("/admin/dashboard");
     }
   }, [router]);
 
-  const login = () => {
-    if (email.trim() === ADMIN_EMAIL && password === ADMIN_PASS) {
-      localStorage.setItem("admin_authed", "1");
+  const login = async () => {
+    if (loading) return;
+    setLoading(true);
+    setError(false);
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      if (!res.ok) {
+        setError(true);
+        return;
+      }
+      const data = await res.json();
+      localStorage.setItem("admin_token", data.token);
       window.location.href = "/admin/dashboard";
-    } else {
+    } catch {
       setError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -88,9 +101,10 @@ export default function AdminLoginPage() {
             <button
               type="button"
               onClick={login}
-              className="mt-1 w-full bg-[#003087] text-white font-black py-3.5 rounded-xl hover:bg-[#002060] transition active:scale-[0.98] shadow-lg"
+              disabled={loading}
+              className="mt-1 w-full bg-[#003087] text-white font-black py-3.5 rounded-xl hover:bg-[#002060] transition active:scale-[0.98] shadow-lg disabled:opacity-60"
             >
-              Sign In
+              {loading ? "Signing in…" : "Sign In"}
             </button>
           </div>
         </div>
