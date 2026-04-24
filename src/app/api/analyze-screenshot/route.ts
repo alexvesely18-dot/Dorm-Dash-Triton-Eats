@@ -1,16 +1,42 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit, getIp } from "@/lib/rateLimit";
+import { isBase64SizeOk, isOneOf, sanitizeText } from "@/lib/validate";
+
+const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
 
 export async function POST(req: NextRequest) {
+  const ip = getIp(req);
+  if (!rateLimit(ip, "analyze-screenshot", 10, 60_000)) {
+    return NextResponse.json({ success: false, error: "Too many requests. Try again in 1 minute." }, { status: 429 });
+  }
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ success: false, error: "No API key configured" });
   }
 
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ success: false, error: "Invalid request" }, { status: 400 });
+  }
+
+  const { imageBase64, mimeType } = body;
+
+  if (!isOneOf(mimeType, [...ALLOWED_MIME_TYPES])) {
+    return NextResponse.json({ success: false, error: "Unsupported image type" }, { status: 400 });
+  }
+
+  if (!isBase64SizeOk(imageBase64, 10_000_000)) {
+    return NextResponse.json({ success: false, error: "Image too large (max 10 MB)" }, { status: 413 });
+  }
+
+  const safeBase64 = sanitizeText(imageBase64 as string, 15_000_000).replace(/[^A-Za-z0-9+/=]/g, "");
+
   const client = new Anthropic();
 
   try {
-    const { imageBase64, mimeType } = await req.json();
-
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 512,
@@ -22,8 +48,8 @@ export async function POST(req: NextRequest) {
               type: "image",
               source: {
                 type: "base64",
-                media_type: mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
-                data: imageBase64,
+                media_type: mimeType as typeof ALLOWED_MIME_TYPES[number],
+                data: safeBase64,
               },
             },
             {

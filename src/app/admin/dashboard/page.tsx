@@ -35,14 +35,18 @@ export default function AdminDashboard() {
   const [assignCollege, setAssignCollege] = useState("");
 
   useEffect(() => {
-    if (localStorage.getItem("admin_authed") !== "1") {
+    if (!localStorage.getItem("admin_token")) {
       router.replace("/admin");
     }
   }, [router]);
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("/api/admin/orders");
+      const token = localStorage.getItem("admin_token") ?? "";
+      const res = await fetch("/api/admin/orders", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) { router.replace("/admin"); return; }
       if (!res.ok) return;
       const data = await res.json();
       setOrders(data.orders ?? []);
@@ -58,7 +62,7 @@ export default function AdminDashboard() {
   }, []);
 
   const logout = () => {
-    localStorage.removeItem("admin_authed");
+    localStorage.removeItem("admin_token");
     router.push("/admin");
   };
 

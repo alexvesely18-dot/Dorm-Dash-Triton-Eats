@@ -7,19 +7,25 @@ import {
   DINING_HALLS,
   COLLEGES,
 } from "@/lib/pricing";
+import { rateLimit, getIp } from "@/lib/rateLimit";
+import { sanitizeText } from "@/lib/validate";
 
 // GET /api/orders?dasherCollege=Sixth+College
 // Returns pending orders visible to this dasher.
 // Door-delivery orders are only visible to dashers whose college matches (or when college is unset).
 // Scheduled orders are hidden until their scheduledFor time arrives.
 export async function GET(req: NextRequest) {
+  const ip = getIp(req);
+  if (!rateLimit(ip, "orders-get", 120, 60_000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const dasherCollege = req.nextUrl.searchParams.get("dasherCollege") ?? "";
   const now = Date.now();
 
   const available = Array.from(orderStore.values()).filter((o) => {
     if (o.status !== "pending") return false;
     if (o.toDoor && dasherCollege && o.deliveryCollege !== dasherCollege) return false;
-    // Hide orders scheduled for the future
     if (o.scheduledFor && new Date(o.scheduledFor).getTime() > now) return false;
     return true;
   });
@@ -29,7 +35,17 @@ export async function GET(req: NextRequest) {
 
 // POST /api/orders  — student places an order
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  const ip = getIp(req);
+  if (!rateLimit(ip, "orders-post", 10, 60_000)) {
+    return NextResponse.json({ error: "Too many orders. Please wait." }, { status: 429 });
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
   // Validate hall and college for pricing
   const hallId = body.hall as HallId;
@@ -43,15 +59,15 @@ export async function POST(req: NextRequest) {
 
   // Parse cart — items may be objects {name, quantity, type} or legacy strings
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rawCart: any[] = Array.isArray(body.cart) ? body.cart : [];
+  const rawCart: any[] = Array.isArray(body.cart) ? body.cart.slice(0, 50) : [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const foodItems  = rawCart.filter((i: any) => i.type === "food").reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const drinkItems = rawCart.filter((i: any) => i.type === "drink").reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0);
   // Normalise to human-readable strings for storage and dasher display
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cart: string[] = rawCart.map((i: any) =>
-    typeof i === "string" ? i : `${Number(i.quantity) || 1}× ${String(i.name)}`
+  const cart: string[] = rawCart.map((i) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    typeof i === "string" ? sanitizeText(i, 100) : `${Number((i as any).quantity) || 1}× ${sanitizeText(String((i as any).name), 100)}`
   );
 
   const breakdown = calculateOrder({
@@ -75,23 +91,23 @@ export async function POST(req: NextRequest) {
     id,
     status:          "pending",
     hall:            DINING_HALLS[hallId].name,
-    hallEmoji:       String(body.hallEmoji     ?? "🍽"),
-    hallCollege:     String(body.hallCollege   ?? ""),
+    hallEmoji:       sanitizeText(body.hallEmoji     ?? "🍽", 10),
+    hallCollege:     sanitizeText(body.hallCollege   ?? "", 80),
     hallLat:         Number(body.hallLat)      || 0,
     hallLng:         Number(body.hallLng)      || 0,
     cart,
-    pid_last4:       body.pid_last4    != null ? String(body.pid_last4)    : null,
-    pickup_time:     body.pickup_time  != null ? String(body.pickup_time)  : null,
-    order_number:    String(body.order_number  ?? id),
+    pid_last4:       body.pid_last4    != null ? sanitizeText(String(body.pid_last4), 4) : null,
+    pickup_time:     body.pickup_time  != null ? sanitizeText(String(body.pickup_time), 20) : null,
+    order_number:    sanitizeText(String(body.order_number ?? id), 30),
     subtotal:        breakdown.subtotal,
     deliveryFee:     breakdown.deliveryFee,
     total:           breakdown.total,
     tier:            breakdown.tier,
-    building:        String(body.building      ?? ""),
-    deliveryCollege: String(body.deliveryCollege ?? ""),
+    building:        sanitizeText(String(body.building      ?? ""), 100),
+    deliveryCollege: sanitizeText(String(body.deliveryCollege ?? ""), 80),
     destLat:         Number(body.destLat)      || 0,
     destLng:         Number(body.destLng)      || 0,
-    room:            body.room != null ? String(body.room) : null,
+    room:            body.room != null ? sanitizeText(String(body.room), 20) : null,
     toDoor:          Boolean(body.toDoor),
     scheduledFor:    body.scheduledFor != null ? String(body.scheduledFor) : undefined,
     createdAt:       new Date().toISOString(),
