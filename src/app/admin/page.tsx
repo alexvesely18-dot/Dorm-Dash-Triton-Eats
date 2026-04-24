@@ -9,7 +9,7 @@ export default function AdminLoginPage() {
   const [email, setEmail]   = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow]     = useState(false);
-  const [error, setError]   = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Skip login if already authenticated
@@ -22,22 +22,28 @@ export default function AdminLoginPage() {
   const login = async () => {
     if (loading) return;
     setLoading(true);
-    setError(false);
+    setErrorMsg("");
     try {
       const res = await fetch("/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password }),
       });
-      if (!res.ok) {
-        setError(true);
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem("admin_token", data.token);
+        window.location.href = "/admin/dashboard";
         return;
       }
-      const data = await res.json();
-      localStorage.setItem("admin_token", data.token);
-      window.location.href = "/admin/dashboard";
+      if (res.status === 500) {
+        setErrorMsg("Server missing ADMIN_EMAIL / ADMIN_PASS env vars.");
+      } else if (res.status === 429) {
+        setErrorMsg("Too many attempts. Wait a minute and retry.");
+      } else {
+        setErrorMsg("Invalid credentials — try again.");
+      }
     } catch {
-      setError(true);
+      setErrorMsg("Network error.");
     } finally {
       setLoading(false);
     }
@@ -64,7 +70,7 @@ export default function AdminLoginPage() {
               <input
                 type="email"
                 value={email}
-                onChange={e => { setEmail(e.target.value); setError(false); }}
+                onChange={e => { setEmail(e.target.value); setErrorMsg(""); }}
                 onKeyDown={e => { if (e.key === "Enter") login(); }}
                 placeholder="you@ucsd.edu"
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition"
@@ -77,7 +83,7 @@ export default function AdminLoginPage() {
                 <input
                   type={show ? "text" : "password"}
                   value={password}
-                  onChange={e => { setPassword(e.target.value); setError(false); }}
+                  onChange={e => { setPassword(e.target.value); setErrorMsg(""); }}
                   onKeyDown={e => { if (e.key === "Enter") login(); }}
                   placeholder="••••••••"
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-11 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition"
@@ -92,9 +98,9 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-            {error && (
+            {errorMsg && (
               <p className="text-red-500 text-xs font-semibold text-center">
-                Invalid credentials — try again.
+                {errorMsg}
               </p>
             )}
 
