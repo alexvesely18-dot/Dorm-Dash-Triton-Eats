@@ -152,34 +152,36 @@ export default function DasherHomePage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col pb-8">
 
-      <div style={{ backgroundColor: theme.accent }} className="px-5 pt-14 pb-6 text-white">
-        <div className="flex items-center justify-between max-w-md mx-auto">
-          <div>
-            <p className="text-white/60 text-sm">Hey Dasher 👋</p>
-            <h1 className="text-2xl font-black mt-0.5">{firstName}</h1>
-            {dasherCollege && <p className="text-white/50 text-xs mt-0.5">{dasherCollege}</p>}
+      <div style={{ backgroundColor: theme.accent }} className="px-5 pt-14 pb-10 text-white relative overflow-hidden">
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none"/>
+        <div className="absolute -bottom-16 -left-10 w-56 h-56 rounded-full blur-3xl pointer-events-none" style={{backgroundColor: `${theme.gold}20`}}/>
+        <div className="relative flex items-center justify-between max-w-md mx-auto">
+          <div className="animate-slide-down">
+            <p className="text-white/70 text-sm flex items-center gap-1.5">Hey Dasher <span className="animate-wiggle inline-block">👋</span></p>
+            <h1 className="text-3xl font-black mt-0.5 tracking-tight">{firstName}</h1>
+            {dasherCollege && <p className="text-white/60 text-xs mt-1">{dasherCollege}</p>}
           </div>
-          <div className="flex items-center gap-3">
-            <button className="relative w-10 h-10 bg-white/15 rounded-full flex items-center justify-center text-white">
+          <div className="flex items-center gap-3 animate-slide-down stagger-1">
+            <button className="relative w-10 h-10 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-white press hover:bg-white/30 transition">
               <Bell size={18}/>
             </button>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm" style={{ backgroundColor: theme.avatarBg, color: theme.avatarText }}>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm shadow-lg ring-2 ring-white/30" style={{ backgroundColor: theme.avatarBg, color: theme.avatarText }}>
               {dasherName.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase() || "D"}
             </div>
           </div>
         </div>
       </div>
 
-      <main className="flex-1 max-w-md mx-auto w-full px-5 -mt-1">
+      <main className="flex-1 max-w-md mx-auto w-full px-5 -mt-5 relative z-10">
 
         {/* Stat cards */}
-        <div className="grid grid-cols-3 gap-3 mt-5">
+        <div className="grid grid-cols-3 gap-3">
           {[
             { icon: <DollarSign size={16}/>, label: "Today",      value: `$${todayEarnings.toFixed(2)}` },
             { icon: <Package size={16}/>,    label: "Deliveries", value: String(history.length) },
             { icon: <Star size={16}/>,       label: "Rating",     value: history.length > 0 ? "4.9" : "—" },
-          ].map((s) => (
-            <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex flex-col items-center gap-1">
+          ].map((s, i) => (
+            <div key={s.label} className={`bg-white rounded-2xl border border-gray-100 shadow-md p-3.5 flex flex-col items-center gap-1 lift animate-pop-in stagger-${i+1}`}>
               <span className="text-[#003087]">{s.icon}</span>
               <p className="text-lg font-black text-gray-900">{s.value}</p>
               <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">{s.label}</p>

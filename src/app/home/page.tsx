@@ -122,40 +122,44 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col pb-24">
 
-      <div style={{ backgroundColor: theme.accent }} className="px-5 pt-14 pb-6">
-        <div className="flex items-center justify-between max-w-md mx-auto">
-          <div>
-            <p className="text-white/60 text-sm">{timeOfDayGreeting()} 👋</p>
-            <h1 className="text-white text-2xl font-black mt-0.5">Hey, {userName}!</h1>
+      <div style={{ backgroundColor: theme.accent }} className="px-5 pt-14 pb-10 relative overflow-hidden">
+        <div className="absolute -top-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none"/>
+        <div className="absolute -bottom-16 -left-10 w-56 h-56 rounded-full blur-3xl pointer-events-none" style={{backgroundColor: `${theme.gold}20`}}/>
+        <div className="relative flex items-center justify-between max-w-md mx-auto">
+          <div className="animate-slide-down">
+            <p className="text-white/70 text-sm flex items-center gap-1.5">
+              {timeOfDayGreeting()} <span className="animate-wiggle inline-block">👋</span>
+            </p>
+            <h1 className="text-white text-3xl font-black mt-0.5 tracking-tight">Hey, {userName}!</h1>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="relative w-10 h-10 bg-white/15 rounded-full flex items-center justify-center text-white">
+          <div className="flex items-center gap-3 animate-slide-down stagger-1">
+            <button className="relative w-10 h-10 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-white press hover:bg-white/30 transition">
               <Bell size={18}/>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ backgroundColor: theme.gold }}/>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: theme.gold }}/>
             </button>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm" style={{ backgroundColor: theme.avatarBg, color: theme.avatarText }}>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm shadow-lg ring-2 ring-white/30" style={{ backgroundColor: theme.avatarBg, color: theme.avatarText }}>
               {userInitials}
             </div>
           </div>
         </div>
       </div>
 
-      <main className="flex-1 max-w-md mx-auto w-full px-5 -mt-1">
+      <main className="flex-1 max-w-md mx-auto w-full px-5 -mt-5 relative z-10">
 
         {/* Active Order — loading skeleton while first poll is in-flight */}
         {orderId && !order && (
-          <div className="mt-5 bg-white rounded-3xl shadow-lg border border-gray-100 p-5">
-            <div className="animate-pulse">
-              <div className="h-3 bg-gray-100 rounded-full w-24 mb-3"/>
-              <div className="h-5 bg-gray-100 rounded-full w-48 mb-2"/>
-              <div className="h-3 bg-gray-100 rounded-full w-36"/>
+          <div className="mt-5 bg-white rounded-3xl shadow-lg border border-gray-100 p-5 animate-scale-in">
+            <div className="flex flex-col gap-3">
+              <div className="skeleton h-3 w-24"/>
+              <div className="skeleton h-5 w-48"/>
+              <div className="skeleton h-3 w-36"/>
             </div>
           </div>
         )}
 
         {/* Active Order */}
         {isActive ? (
-          <div className="mt-5 bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+          <div className="mt-5 bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden animate-scale-in lift">
             <div className="flex items-center justify-between px-4 pt-4 pb-2">
               <div className="flex-1 min-w-0 pr-3">
                 <div className="flex items-center gap-2">
@@ -227,9 +231,9 @@ export default function HomePage() {
                 <span>{order.hall}</span>
                 <span>{order.building}</span>
               </div>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden relative">
                 <div
-                  className="h-full rounded-full transition-all duration-1000"
+                  className="h-full rounded-full transition-all duration-1000 stripes relative"
                   style={{
                     background: `linear-gradient(to right, ${theme.accent}, ${theme.gold})`,
                     width: order.status === "pending" ? "10%" : order.status === "claimed" ? "40%" : "75%",
@@ -239,9 +243,9 @@ export default function HomePage() {
             </div>
           </div>
         ) : order?.status === "delivered" ? (
-          <div className="mt-5 bg-green-50 border-2 border-green-200 rounded-3xl p-5 text-center animate-fade-in">
-            <p className="text-3xl mb-2">🎉</p>
-            <p className="font-black text-green-800">Order Delivered!</p>
+          <div className="mt-5 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-3xl p-5 text-center animate-pop-in shadow-lg">
+            <p className="text-4xl mb-2 animate-confetti inline-block">🎉</p>
+            <p className="font-black text-green-800 text-lg">Order Delivered!</p>
             <p className="text-xs text-green-600 mt-1">Enjoy your meal, Triton</p>
 
             {!ratingSubmitted ? (
@@ -283,11 +287,12 @@ export default function HomePage() {
         {/* New Order */}
         <Link
           href="/order"
-          className="mt-4 w-full flex items-center justify-between font-bold px-5 py-4 rounded-2xl shadow-md hover:opacity-90 transition active:scale-[0.98]"
+          className="mt-4 w-full flex items-center justify-between font-bold px-5 py-4 rounded-2xl shadow-lg hover:shadow-xl press animate-slide-up stagger-1 relative overflow-hidden group"
           style={{ backgroundColor: theme.gold, color: theme.accent }}
         >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: `${theme.accent}25` }}>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none"/>
+          <div className="flex items-center gap-3 relative">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center animate-bounce-soft" style={{ backgroundColor: `${theme.accent}25` }}>
               <Plus size={18}/>
             </div>
             <div>
@@ -295,7 +300,7 @@ export default function HomePage() {
               <p className="text-xs font-medium opacity-60">Order from any dining hall</p>
             </div>
           </div>
-          <ChevronRight size={20}/>
+          <ChevronRight size={20} className="relative group-hover:translate-x-1 transition-transform"/>
         </Link>
 
         {/* Dining hall chips with real open/closed status */}
@@ -304,20 +309,23 @@ export default function HomePage() {
             Dining Halls — {openHalls.length} Open Now
           </p>
           <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {ALL_HALLS.map((d) => {
+            {ALL_HALLS.map((d, i) => {
               const open = isHallOpen(d.id);
               const label = hallOpenLabel(d.id);
               return (
                 <Link
                   key={d.id}
                   href="/order"
-                  className={`flex-shrink-0 rounded-2xl border shadow-sm px-3 py-2.5 flex flex-col items-center gap-1 min-w-[80px] hover:shadow-md transition ${
+                  className={`flex-shrink-0 rounded-2xl border shadow-sm px-3 py-2.5 flex flex-col items-center gap-1 min-w-[80px] lift press animate-pop-in stagger-${(i % 6) + 1} ${
                     open ? "bg-white border-gray-100" : "bg-gray-50 border-gray-200 opacity-60"
                   }`}
                 >
                   <span className="text-2xl">{d.emoji}</span>
                   <p className="text-xs font-semibold text-gray-700 text-center leading-tight">{d.name}</p>
-                  <p className={`text-[10px] font-semibold ${open ? "text-green-500" : "text-gray-400"}`}>{label}</p>
+                  <p className={`text-[10px] font-semibold flex items-center gap-1 ${open ? "text-green-500" : "text-gray-400"}`}>
+                    {open && <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block"/>}
+                    {label}
+                  </p>
                 </Link>
               );
             })}
@@ -338,8 +346,8 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {recentOrders.map((o) => (
-                <div key={o.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+              {recentOrders.map((o, i) => (
+                <div key={o.id} className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3 lift animate-slide-up stagger-${(i % 6) + 1}`}>
                   <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">{o.hallEmoji}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
