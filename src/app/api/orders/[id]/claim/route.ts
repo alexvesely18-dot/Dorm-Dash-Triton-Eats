@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { orderStore } from "@/lib/orderStore";
+import { getOrder, setOrder } from "@/lib/orderStore";
 import { rateLimit, getIp } from "@/lib/rateLimit";
 import { isValidOrderId, sanitizeText } from "@/lib/validate";
 
@@ -18,7 +18,7 @@ export async function POST(
     return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
   }
 
-  const order = orderStore.get(id);
+  const order = await getOrder(id);
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (order.status !== "pending") {
     return NextResponse.json({ error: "Already claimed" }, { status: 409 });
@@ -42,6 +42,6 @@ export async function POST(
     dasherTransport,
     claimedAt: new Date().toISOString(),
   };
-  orderStore.set(id, updated);
+  await setOrder(id, updated);
   return NextResponse.json({ order: updated });
 }

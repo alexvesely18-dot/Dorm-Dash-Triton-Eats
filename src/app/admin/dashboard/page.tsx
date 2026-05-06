@@ -68,16 +68,20 @@ export default function AdminDashboard() {
 
   const assignOrder = async (orderId: string) => {
     if (!assignName.trim()) return;
+    const target = orders.find(o => o.id === orderId);
     try {
+      const patch: Record<string, unknown> = {
+        dasherName: assignName.trim(),
+        dasherTransport: assignTransport,
+      };
+      if (target?.status === "pending") {
+        patch.status = "claimed";
+        patch.claimedAt = new Date().toISOString();
+      }
       const res = await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "claimed",
-          dasherName: assignName.trim(),
-          dasherTransport: assignTransport,
-          claimedAt: new Date().toISOString(),
-        }),
+        body: JSON.stringify(patch),
       });
       if (!res.ok) return;
     } catch { return; }
@@ -302,16 +306,23 @@ export default function AdminDashboard() {
                         </div>
                       )}
 
-                      {/* Admin — Assign Dasher (pending orders only) */}
-                      {order.status === "pending" && (
+                      {/* Admin — Assign / Reassign Dasher (all non-delivered orders) */}
+                      {order.status !== "delivered" && (
                         <div className="bg-white/4 rounded-xl px-3 py-3">
-                          <p className="text-white/35 text-[10px] font-bold uppercase tracking-wide mb-2">Assign Dasher</p>
+                          <p className="text-white/35 text-[10px] font-bold uppercase tracking-wide mb-2">
+                            {order.status === "pending" ? "Assign Dasher" : "Reassign Dasher"}
+                          </p>
                           {assigning !== order.id ? (
                             <button
-                              onClick={() => { setAssigning(order.id); setAssignName(""); setAssignCollege(""); }}
+                              onClick={() => {
+                                setAssigning(order.id);
+                                setAssignName(order.dasherName ?? "");
+                                setAssignTransport((order.dasherTransport ?? "bike") as "bike" | "scooter");
+                                setAssignCollege("");
+                              }}
                               className="w-full py-2 rounded-xl bg-[#F5B700]/20 text-[#F5B700] text-sm font-bold hover:bg-[#F5B700]/30 transition"
                             >
-                              + Assign a Dasher Manually
+                              {order.status === "pending" ? "+ Assign a Dasher Manually" : "↺ Reassign to Another Dasher"}
                             </button>
                           ) : (
                             <div className="flex flex-col gap-2">
@@ -356,7 +367,7 @@ export default function AdminDashboard() {
                                   disabled={!assignName.trim()}
                                   className="flex-1 py-2 rounded-xl bg-[#F5B700] text-[#003087] text-sm font-black hover:bg-[#e0a800] transition disabled:opacity-40"
                                 >
-                                  Assign →
+                                  {order.status === "pending" ? "Assign →" : "Reassign →"}
                                 </button>
                               </div>
                             </div>
