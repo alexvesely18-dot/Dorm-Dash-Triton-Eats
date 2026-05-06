@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { orderStore, Order } from "@/lib/orderStore";
+import { getAllOrders, setOrder, Order } from "@/lib/orderStore";
 import {
   calculateOrder,
   HallId,
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const dasherCollege = req.nextUrl.searchParams.get("dasherCollege") ?? "";
   const now = Date.now();
 
-  const available = Array.from(orderStore.values()).filter((o) => {
+  const available = (await getAllOrders()).filter((o) => {
     if (o.status !== "pending") return false;
     if (o.toDoor && dasherCollege && o.deliveryCollege !== dasherCollege) return false;
     if (o.scheduledFor && new Date(o.scheduledFor).getTime() > now) return false;
@@ -114,7 +114,8 @@ export async function POST(req: NextRequest) {
   };
 
   // Detect smart batch: is there an active claimed order going to the same building?
-  const batchMatch = Array.from(orderStore.values()).find(
+  const allOrders = await getAllOrders();
+  const batchMatch = allOrders.find(
     (o) => o.status === "claimed" && o.building === order.building && o.dasherName
   );
   if (batchMatch) {
@@ -122,6 +123,6 @@ export async function POST(req: NextRequest) {
     order.batchDasher = batchMatch.dasherName;
   }
 
-  orderStore.set(id, order);
+  await setOrder(id, order);
   return NextResponse.json({ id, order, breakdown });
 }

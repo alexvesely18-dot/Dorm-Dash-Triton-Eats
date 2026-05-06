@@ -649,6 +649,9 @@ function OrderPageInner() {
   const [analyzing, setAnalyzing] = useState(false);
   const [extracted, setExtracted] = useState<Extracted | null>(null);
   const [ocrError, setOcrError] = useState(false);
+  const [manualLast4, setManualLast4] = useState("");
+  const [manualOrderNum, setManualOrderNum] = useState("");
+  const [manualPickupTime, setManualPickupTime] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [building, setBuilding] = useState("");
 
@@ -733,7 +736,7 @@ function OrderPageInner() {
     reader.onload = async (ev) => {
       const base64 = (ev.target?.result as string).split(",")[1];
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
+      const timeout = setTimeout(() => controller.abort(), 30000);
       try {
         const res = await fetch("/api/analyze-screenshot", {
           method: "POST",
@@ -756,6 +759,7 @@ function OrderPageInner() {
 
   const clearFile = () => {
     setFile(null); setPreview(null); setExtracted(null); setOcrError(false);
+    setManualLast4(""); setManualOrderNum(""); setManualPickupTime("");
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -793,9 +797,9 @@ function OrderPageInner() {
       hallLat:       hallData?.lat     ?? 32.8800,
       hallLng:       hallData?.lng     ?? -117.2340,
       cart:          cartPayload,
-      pid_last4:     extracted?.pid_last4   ?? null,
-      pickup_time:   extracted?.pickup_time ?? null,
-      order_number:  extracted?.order_number ?? null,
+      pid_last4:     extracted?.pid_last4    ?? (manualLast4.trim()      || null),
+      pickup_time:   extracted?.pickup_time  ?? (manualPickupTime.trim() || null),
+      order_number:  extracted?.order_number ?? (manualOrderNum.trim()   || null),
       building,
       deliveryCollege,
       destLat:       destCoords.lat,
@@ -1128,11 +1132,50 @@ function OrderPageInner() {
                     </div>
                   )}
                   {ocrError && !analyzing && (
-                    <div className="px-4 py-3 bg-amber-50 border-t border-amber-200 flex items-start gap-2">
-                      <AlertCircle size={15} className="text-amber-500 flex-shrink-0 mt-0.5"/>
-                      <div>
-                        <p className="text-xs font-bold text-amber-800">Couldn&apos;t read the screenshot automatically</p>
-                        <p className="text-xs text-amber-600 mt-0.5">That&apos;s OK — your Dasher will still receive your order details.</p>
+                    <div className="px-4 py-4 bg-amber-50 border-t border-amber-200">
+                      <div className="flex items-start gap-2 mb-3">
+                        <AlertCircle size={15} className="text-amber-500 flex-shrink-0 mt-0.5"/>
+                        <div>
+                          <p className="text-xs font-bold text-amber-800">Couldn&apos;t read automatically — enter details below</p>
+                          <p className="text-xs text-amber-600 mt-0.5">Type in the info from your Triton2Go receipt.</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold text-amber-700 uppercase tracking-wide block mb-1">Receipt # last 4 digits</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={4}
+                            placeholder="e.g. 8263"
+                            value={manualLast4}
+                            onChange={e => setManualLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                            className="w-full bg-white border border-amber-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-amber-700 uppercase tracking-wide block mb-1">Order / Transaction #</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={20}
+                            placeholder="e.g. 121358263"
+                            value={manualOrderNum}
+                            onChange={e => setManualOrderNum(e.target.value.trim())}
+                            className="w-full bg-white border border-amber-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-amber-700 uppercase tracking-wide block mb-1">Pickup time (optional)</label>
+                          <input
+                            type="text"
+                            maxLength={20}
+                            placeholder="e.g. 1:02 PM"
+                            value={manualPickupTime}
+                            onChange={e => setManualPickupTime(e.target.value)}
+                            className="w-full bg-white border border-amber-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                          />
+                        </div>
                       </div>
                     </div>
                   )}

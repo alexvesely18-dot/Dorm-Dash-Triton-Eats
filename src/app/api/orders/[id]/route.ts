@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { orderStore } from "@/lib/orderStore";
+import { getOrder, setOrder } from "@/lib/orderStore";
 import { rateLimit, getIp } from "@/lib/rateLimit";
 import { isValidOrderId, sanitizeText } from "@/lib/validate";
 
@@ -32,7 +32,7 @@ export async function GET(
     return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
   }
 
-  const order = orderStore.get(id);
+  const order = await getOrder(id);
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ order });
 }
@@ -51,7 +51,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
   }
 
-  const order = orderStore.get(id);
+  const order = await getOrder(id);
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   let body: Record<string, unknown>;
@@ -89,6 +89,6 @@ export async function PATCH(
   }
 
   const updated = { ...order, ...patch };
-  orderStore.set(id, updated);
+  await setOrder(id, updated);
   return NextResponse.json({ order: updated });
 }
