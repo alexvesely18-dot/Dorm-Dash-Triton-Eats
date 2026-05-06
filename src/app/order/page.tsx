@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, CheckCircle, X, Loader2, Minus, Plus, Upload, AlertCircle, MapPin, Clock } from "lucide-react";
-import { BUILDING_COLLEGE, BUILDING_COORDS } from "@/lib/orderStore";
+import { BUILDING_COLLEGE, BUILDING_COORDS, BUILDINGS_BY_COLLEGE } from "@/lib/orderStore";
 import { isHallOpen, hallOpenLabel } from "@/lib/campus";
 import type { HallId, CollegeId } from "@/lib/pricing";
 
@@ -32,7 +32,8 @@ const COLLEGE_TO_PRICING_ID: Record<string, CollegeId> = {
 };
 
 // UCSD campus bounding box
-const UCSD = { swLat: 32.8685, swLng: -117.2440, neLat: 32.8955, neLng: -117.2115 };
+// Bounding box covers main campus + Theatre District + off-campus UC housing (Miramar St)
+const UCSD = { swLat: 32.8630, swLng: -117.2460, neLat: 32.8960, neLng: -117.2115 };
 function isOnCampus(lat: number, lng: number) {
   return lat >= UCSD.swLat && lat <= UCSD.neLat && lng >= UCSD.swLng && lng <= UCSD.neLng;
 }
@@ -634,8 +635,6 @@ type Extracted = {
   total: string | null;
 };
 
-const BUILDINGS = ["Tioga Hall","Tenaya Hall","Tahoe Hall","Shasta Hall","Anza Hall","De Anza Hall","Cuicacalli","Matthews","Rita Atkinson Residences","Mesa Nueva","Marshall Upper/Lower","Warren Apartments","Revelle Dorms"];
-
 function OrderPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -651,7 +650,7 @@ function OrderPageInner() {
   const [extracted, setExtracted] = useState<Extracted | null>(null);
   const [ocrError, setOcrError] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [building, setBuilding] = useState("Tioga Hall");
+  const [building, setBuilding] = useState("");
 
   // Ask for location on mount to verify student is on campus
   useEffect(() => {
@@ -684,6 +683,14 @@ function OrderPageInner() {
   const [scheduledFor, setScheduledFor] = useState("");
   const [apiError, setApiError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Pre-fill delivery address from saved profile
+  useEffect(() => {
+    const savedBuilding = localStorage.getItem("user_building");
+    const savedRoom     = localStorage.getItem("user_room");
+    if (savedBuilding) setBuilding(savedBuilding);
+    if (savedRoom)     setRoom(savedRoom);
+  }, []);
 
   // Deep-link from home page hall chips e.g. /order?hall=64deg
   useEffect(() => {
@@ -752,7 +759,7 @@ function OrderPageInner() {
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  const canSubmit = hall && cartCount > 0 && triton && building && (!toDoor || room.trim());
+  const canSubmit = hall && cartCount > 0 && triton && building;
 
   const hallData = HALLS.find((h) => h.id === hall);
   const currentStation = menu[stationIdx];
@@ -1136,13 +1143,33 @@ function OrderPageInner() {
 
             {/* Delivery address */}
             <section>
-              <Step n={6} label="Where should we deliver?" />
+              <div className="flex items-center justify-between">
+                <Step n={6} label="Where should we deliver?" />
+                <Link href="/profile" className="text-xs font-semibold text-[#003087] opacity-60 hover:opacity-100">Edit in profile</Link>
+              </div>
               <div className="mt-3 flex flex-col gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Building</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Building</label>
+                    {building && <span className="text-[10px] text-[#003087]/60 font-semibold">From your profile</span>}
+                  </div>
                   <select value={building} onChange={e => setBuilding(e.target.value)} className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition appearance-none">
-                    {BUILDINGS.map(b => <option key={b}>{b}</option>)}
+                    <option value="" disabled>Select your building…</option>
+                    {Object.entries(BUILDINGS_BY_COLLEGE).map(([college, buildings]) => (
+                      <optgroup key={college} label={college}>
+                        {buildings.map(b => <option key={b} value={b}>{b}</option>)}
+                      </optgroup>
+                    ))}
                   </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Room Number</label>
+                  <input
+                    className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition"
+                    placeholder="e.g. 214B"
+                    value={room}
+                    onChange={e => setRoom(e.target.value)}
+                  />
                 </div>
                 <button onClick={() => setToDoor(!toDoor)} className={`flex items-center gap-4 rounded-2xl border-2 px-4 py-4 transition text-left ${toDoor ? "bg-[#003087]/5 border-[#003087]" : "bg-white border-gray-200 hover:border-gray-300"}`}>
                   <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${toDoor ? "bg-[#003087] border-[#003087] scale-110" : "border-gray-300"}`}>
@@ -1153,12 +1180,6 @@ function OrderPageInner() {
                     <p className="text-xs text-gray-400 mt-0.5">Dasher will bring it directly to your door</p>
                   </div>
                 </button>
-                {toDoor && (
-                  <div className="animate-fade-in flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Room Number</label>
-                    <input className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition" placeholder="e.g. 214B" value={room} onChange={e => setRoom(e.target.value)}/>
-                  </div>
-                )}
               </div>
             </section>
 
@@ -1200,7 +1221,7 @@ function OrderPageInner() {
             </button>
             {!canSubmit && !analyzing && (
               <p className="text-center text-xs text-gray-400 mt-2">
-                {cartCount === 0 ? "Add at least one item" : !triton ? "Confirm Triton2Go container" : toDoor && !room.trim() ? "Enter your room number" : "Almost there!"}
+                {cartCount === 0 ? "Add at least one item" : !triton ? "Confirm Triton2Go container" : !building ? "Select your building" : "Almost there!"}
               </p>
             )}
             {apiError && (
