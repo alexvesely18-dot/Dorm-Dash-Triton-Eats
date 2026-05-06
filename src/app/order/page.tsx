@@ -977,7 +977,8 @@ function OrderPageInner() {
 
             {/* Items for selected station */}
             <div>
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-100">
+              <Step n={3} label="Select what you ordered" />
+              <div className="mt-3 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-100">
                 {currentStation.items.map((item) => {
                   const qty = cart[item.name] ?? 0;
                   return (
@@ -1039,7 +1040,7 @@ function OrderPageInner() {
 
             {/* Triton2Go */}
             <section>
-              <Step n={1} label="Confirm Triton2Go container" />
+              <Step n={4} label="Confirm Triton2Go container" />
               <button
                 onClick={() => setTriton(!triton)}
                 className={`mt-3 w-full flex items-center gap-4 rounded-2xl border-2 px-4 py-4 transition ${triton ? "bg-green-50 border-green-400" : "bg-white border-gray-200 hover:border-gray-300"}`}
@@ -1056,7 +1057,7 @@ function OrderPageInner() {
 
             {/* Screenshot OCR */}
             <section>
-              <Step n={2} label="Upload your Triton2Go confirmation" />
+              <Step n={5} label="Upload your Triton2Go confirmation" />
               <p className="text-xs text-gray-400 mt-1 mb-3">
                 We&apos;ll automatically read your order details, student ID last 4, and pickup time from the screenshot.
               </p>
@@ -1135,7 +1136,7 @@ function OrderPageInner() {
 
             {/* Delivery address */}
             <section>
-              <Step n={3} label="Where should we deliver?" />
+              <Step n={6} label="Where should we deliver?" />
               <div className="mt-3 flex flex-col gap-3">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Building</label>
@@ -1163,7 +1164,7 @@ function OrderPageInner() {
 
             {/* Schedule */}
             <section>
-              <Step n={4} label="When do you want delivery?" />
+              <Step n={7} label="When do you want delivery?" />
               <div className="mt-3 flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-2">
                   <button onClick={() => setScheduleMode(false)} className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-bold transition ${!scheduleMode ? "border-[#003087] bg-[#003087]/5 text-[#003087]" : "border-gray-200 bg-white text-gray-500"}`}>⚡ ASAP</button>
