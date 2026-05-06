@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, User, BookOpen } from "lucide-react";
+import { BUILDINGS_BY_COLLEGE } from "@/lib/orderStore";
 
 const COLLEGES = ["Revelle","Muir","Marshall","Warren","Roosevelt","Sixth","Seventh","Eighth"].map(c => c + " College");
-const BUILDINGS = ["Tioga Hall","Tenaya Hall","Tahoe Hall","Shasta Hall","Anza Hall","De Anza Hall","Cuicacalli","Matthews","Rita Atkinson Residences","Mesa Nueva","Marshall Upper/Lower","Warren Apartments","Revelle Dorms"];
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -18,6 +18,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [college, setCollege] = useState("");
   const [building, setBuilding] = useState("");
+  const [room, setRoom] = useState("");
   const [emailError, setEmailError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
@@ -52,6 +53,7 @@ export default function SignUpPage() {
     localStorage.setItem("user_email",    email);
     localStorage.setItem("user_college",  college);
     localStorage.setItem("user_building", building);
+    localStorage.setItem("user_room",     room.trim());
     localStorage.setItem("user_username", username.trim());
     localStorage.setItem("user_phone",    phone.trim());
     router.push("/home");
@@ -145,8 +147,21 @@ export default function SignUpPage() {
               onChange={e => setBuilding(e.target.value)}
             >
               <option value="" disabled>Select your building…</option>
-              {BUILDINGS.map(b => <option key={b}>{b}</option>)}
+              {Object.entries(BUILDINGS_BY_COLLEGE).map(([col, buildings]) => (
+                <optgroup key={col} label={col}>
+                  {buildings.map(b => <option key={b} value={b}>{b}</option>)}
+                </optgroup>
+              ))}
             </select>
+          </Field>
+          <Field label="Room Number (optional)">
+            <input
+              type="text"
+              placeholder="e.g. 214B"
+              className={cls}
+              value={room}
+              onChange={e => setRoom(e.target.value)}
+            />
           </Field>
         </SectionCard>
 

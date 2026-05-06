@@ -6,8 +6,9 @@ import { Pencil, Check, X, ChevronRight, Bell, LogOut, Lock, MapPin, BookOpen, U
 import BottomNav from "@/components/BottomNav";
 import { getCollegeTheme } from "@/lib/campus";
 
+import { BUILDINGS_BY_COLLEGE } from "@/lib/orderStore";
+
 const COLLEGES = ["Revelle College","Muir College","Marshall College","Warren College","Roosevelt College","Sixth College","Seventh College","Eighth College"];
-const BUILDINGS = ["Tioga Hall","Tenaya Hall","Tahoe Hall","Shasta Hall","Anza Hall","De Anza Hall","Cuicacalli","Matthews","Rita Atkinson Residences","Mesa Nueva","Marshall Upper/Lower","Warren Apartments","Revelle Dorms"];
 
 function useEditable(initial: string) {
   const [value, setValue] = useState(initial);
@@ -173,9 +174,9 @@ export default function ProfilePage() {
           <div className="flex flex-col gap-1 py-2">
             <p className="text-xs font-semibold text-gray-400">Building</p>
             {building.editing ? (
-              <SelectEdit
+              <GroupedSelectEdit
                 value={building.draft}
-                options={BUILDINGS}
+                groups={BUILDINGS_BY_COLLEGE}
                 onChange={building.setDraft}
                 onSave={() => { building.save((v) => saveField("user_building", v)); }}
                 onCancel={building.cancel}
@@ -310,7 +311,7 @@ function EditableRow({ value, onEdit, accent }: { value: string; onEdit: () => v
   );
 }
 
-function SelectEdit({ value, options, onChange, onSave, onCancel, accent }: {
+function SelectEdit({ value, options, onChange, onSave, onCancel, accent: _accent }: {
   value: string; options: string[];
   onChange: (v: string) => void;
   onSave: () => void; onCancel: () => void;
@@ -320,6 +321,32 @@ function SelectEdit({ value, options, onChange, onSave, onCancel, accent }: {
     <div className="flex items-center gap-2">
       <select value={value} onChange={e => onChange(e.target.value)} className={`flex-1 ${inputCls} appearance-none`}>
         {options.map(o => <option key={o}>{o}</option>)}
+      </select>
+      <button onClick={onSave} className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+        <Check size={14} className="text-white"/>
+      </button>
+      <button onClick={onCancel} className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+        <X size={14} className="text-gray-600"/>
+      </button>
+    </div>
+  );
+}
+
+function GroupedSelectEdit({ value, groups, onChange, onSave, onCancel }: {
+  value: string; groups: Record<string, string[]>;
+  onChange: (v: string) => void;
+  onSave: () => void; onCancel: () => void;
+  accent: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <select value={value} onChange={e => onChange(e.target.value)} className={`flex-1 ${inputCls} appearance-none`}>
+        <option value="" disabled>Select building…</option>
+        {Object.entries(groups).map(([col, buildings]) => (
+          <optgroup key={col} label={col}>
+            {buildings.map(b => <option key={b} value={b}>{b}</option>)}
+          </optgroup>
+        ))}
       </select>
       <button onClick={onSave} className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
         <Check size={14} className="text-white"/>
