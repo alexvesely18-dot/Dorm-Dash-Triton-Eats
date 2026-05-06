@@ -28,6 +28,8 @@ export type Order = {
   dasherLng?: number;
   createdAt: string;
   claimedAt?: string;
+  pickedUpAt?: string;
+  deliveredAt?: string;
   scheduledFor?: string;
   batched?: boolean;
   batchDasher?: string;

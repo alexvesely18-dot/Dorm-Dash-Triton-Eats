@@ -763,7 +763,7 @@ function OrderPageInner() {
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  const canSubmit = hall && cartCount > 0 && triton && building;
+  const canSubmit = hall && cartCount > 0 && triton && building && (!toDoor || room.trim().length > 0);
 
   const hallData = HALLS.find((h) => h.id === hall);
   const currentStation = menu[stationIdx];
