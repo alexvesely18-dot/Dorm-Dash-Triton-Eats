@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ChevronRight, CheckCircle, X, Loader2, Minus, Plus, Upload, AlertCircle, MapPin, Clock } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight, CheckCircle, X, Loader2, Minus, Plus, Upload, AlertCircle, MapPin, Clock } from "lucide-react";
 import { BUILDING_COLLEGE, BUILDING_COORDS } from "@/lib/orderStore";
 import { isHallOpen, hallOpenLabel } from "@/lib/campus";
 import type { HallId, CollegeId } from "@/lib/pricing";
@@ -636,8 +636,11 @@ type Extracted = {
 
 const BUILDINGS = ["Tioga Hall","Tenaya Hall","Tahoe Hall","Shasta Hall","Anza Hall","De Anza Hall","Cuicacalli","Matthews","Rita Atkinson Residences","Mesa Nueva","Marshall Upper/Lower","Warren Apartments","Revelle Dorms"];
 
-export default function OrderPage() {
+function OrderPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [step, setStep] = useState<"hall" | "station" | "items">("hall");
+  const [stationIdx, setStationIdx] = useState(0);
   const [hall, setHall] = useState("");
   const [locationStatus, setLocationStatus] = useState<"idle"|"ok"|"offcampus"|"denied">("idle");
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -681,6 +684,16 @@ export default function OrderPage() {
   const [scheduledFor, setScheduledFor] = useState("");
   const [apiError, setApiError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Deep-link from home page hall chips e.g. /order?hall=64deg
+  useEffect(() => {
+    const hallParam = searchParams.get("hall");
+    if (hallParam && MENUS[hallParam]) {
+      setHall(hallParam);
+      setCart({});
+      setStep("station");
+    }
+  }, [searchParams]);
 
   const menu = MENUS[hall] ?? [];
   const allItems = menu.flatMap((g) => g.items);
@@ -740,6 +753,14 @@ export default function OrderPage() {
   };
 
   const canSubmit = hall && cartCount > 0 && triton && building && (!toDoor || room.trim());
+
+  const hallData = HALLS.find((h) => h.id === hall);
+  const currentStation = menu[stationIdx];
+
+  const goBack = () => {
+    if (step === "items") setStep("station");
+    else if (step === "station") { setStep("hall"); }
+  };
 
   const saveAndGo = async () => {
     if (submitting) return;
@@ -820,341 +841,398 @@ export default function OrderPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
-      <div className="bg-[#003087] px-5 pt-14 pb-6 text-white">
-        <Link href="/home" className="text-white/60 text-sm flex items-center gap-1 mb-4">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-          Home
-        </Link>
+
+      {/* ── Header ── */}
+      <div className="bg-[#003087] px-5 pt-14 pb-6 text-white relative overflow-hidden">
+        <div className="absolute -top-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none"/>
+
+        {step !== "hall" ? (
+          <button onClick={goBack} className="text-white/60 text-sm flex items-center gap-1 mb-4 press">
+            <ChevronLeft size={16}/>
+            {step === "items" ? (hallData?.name ?? "Stations") : "Dining Halls"}
+          </button>
+        ) : (
+          <Link href="/home" className="text-white/60 text-sm flex items-center gap-1 mb-4">
+            <ChevronLeft size={16}/> Home
+          </Link>
+        )}
+
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-black">New Order</h1>
-            <p className="text-white/60 text-sm mt-1">Select your dining hall and items</p>
+            <h1 className="text-3xl font-black animate-slide-down">
+              {step === "hall" ? "Dining Halls" :
+               step === "station" ? (hallData?.name ?? "") :
+               (currentStation?.category.replace(/^\S+\s*/, "") ?? "")}
+            </h1>
+            <p className="text-white/60 text-sm mt-1">
+              {step === "hall" ? "Where are you ordering from?" :
+               step === "station" ? `${hallData?.emoji ?? ""} Choose a station` :
+               `${hallData?.name ?? ""} · ${currentStation?.items.length ?? 0} items`}
+            </p>
           </div>
-          {locationStatus === "ok" && (
-            <span className="flex items-center gap-1 bg-green-500/20 text-green-300 text-xs font-bold px-2.5 py-1.5 rounded-full">
-              <MapPin size={11}/> On Campus
-            </span>
-          )}
-          {locationStatus === "offcampus" && (
-            <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-300 text-xs font-bold px-2.5 py-1.5 rounded-full">
-              <MapPin size={11}/> Off Campus
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {locationStatus === "ok" && (
+              <span className="flex items-center gap-1 bg-green-500/20 text-green-300 text-xs font-bold px-2.5 py-1.5 rounded-full">
+                <MapPin size={11}/> On Campus
+              </span>
+            )}
+            {locationStatus === "offcampus" && (
+              <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-300 text-xs font-bold px-2.5 py-1.5 rounded-full">
+                <MapPin size={11}/> Off Campus
+              </span>
+            )}
+          </div>
         </div>
+
+        {/* Breadcrumb */}
+        {step !== "hall" && (
+          <div className="flex items-center gap-1.5 mt-3 text-xs text-white/50 flex-wrap">
+            <span>New Order</span>
+            {hallData && <><ChevronRight size={11}/><span className="text-white/70">{hallData.name}</span></>}
+            {step === "items" && currentStation && (
+              <><ChevronRight size={11}/><span className="text-white/90">{currentStation.category.replace(/^\S+\s*/, "")}</span></>
+            )}
+          </div>
+        )}
       </div>
 
-      <main className="flex-1 max-w-md mx-auto w-full px-5 py-6 pb-36 flex flex-col gap-8">
+      <main className="flex-1 max-w-md mx-auto w-full px-5 py-6 pb-36 flex flex-col gap-6">
 
-        {/* ── Step 1: Dining Hall ── */}
-        <section>
-          <Step n={1} label="Which dining hall?" />
-          <div className="grid grid-cols-2 gap-2.5 mt-3">
-            {HALLS.map((d) => {
+        {/* ── STEP 1: Dining Hall grid ── */}
+        {step === "hall" && (
+          <div className="grid grid-cols-2 gap-2.5 animate-fade-in">
+            {HALLS.map((d, i) => {
               const open = isHallOpen(d.id);
               const openLabel = hallOpenLabel(d.id);
               return (
-              <button
-                key={d.id}
-                onClick={() => { setHall(d.id); setCart({}); }}
-                className={`flex flex-col items-start p-3.5 rounded-2xl border-2 transition text-left ${
-                  hall === d.id
-                    ? "border-[#003087] bg-[#003087]/5 shadow-md"
-                    : `${d.bg} ${d.border} hover:shadow-sm`
-                } ${!open ? "opacity-60" : ""}`}
-              >
-                <div className="w-full flex items-start justify-between mb-2">
-                  <span className="text-3xl">{d.emoji}</span>
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${open ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"}`}>
-                    {open ? "Open" : "Closed"}
-                  </span>
-                </div>
-                <p className="font-bold text-sm text-gray-800 leading-tight">{d.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{d.college}</p>
-                <p className={`text-[10px] mt-0.5 font-semibold ${open ? "text-green-500" : "text-gray-400"}`}>{openLabel}</p>
-                {hall === d.id && <CheckCircle size={14} className="text-[#003087] mt-1.5 self-end" />}
-              </button>
-            );})}
-
-          </div>
-        </section>
-
-        {/* ── Step 2: Menu ── */}
-        {hall && (
-          <section className="animate-fade-in">
-            <div className="flex items-center justify-between mb-3">
-              <Step n={2} label={`Choose from ${HALLS.find(h => h.id === hall)?.name}`} />
-              {cartCount > 0 && (
-                <span className="bg-[#F5B700] text-[#003087] text-xs font-black px-2.5 py-1 rounded-full">
-                  {cartCount} item{cartCount > 1 ? "s" : ""} · ${cartTotal.toFixed(2)}
-                </span>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-5">
-              {menu.map((group) => (
-                <div key={group.category}>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{group.category}</p>
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-100">
-                    {group.items.map((item) => {
-                      const qty = cart[item.name] ?? 0;
-                      return (
-                        <div key={item.name} className="flex items-center justify-between px-4 py-3">
-                          <div>
-                            <p className="text-sm font-semibold text-gray-800">{item.name}</p>
-                            <p className="text-xs text-gray-400">${item.price.toFixed(2)}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {qty > 0 ? (
-                              <>
-                                <button onClick={() => sub(item.name)} className="w-7 h-7 rounded-full border-2 border-[#003087] flex items-center justify-center text-[#003087] hover:bg-[#003087] hover:text-white transition">
-                                  <Minus size={12}/>
-                                </button>
-                                <span className="w-5 text-center text-sm font-bold text-[#003087]">{qty}</span>
-                                <button onClick={() => add(item.name)} className="w-7 h-7 rounded-full bg-[#003087] flex items-center justify-center text-white hover:bg-[#002060] transition">
-                                  <Plus size={12}/>
-                                </button>
-                              </>
-                            ) : (
-                              <button onClick={() => add(item.name)} className="w-7 h-7 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-400 hover:border-[#003087] hover:text-[#003087] transition">
-                                <Plus size={12}/>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                <button
+                  key={d.id}
+                  onClick={() => { setHall(d.id); setCart({}); setStep("station"); }}
+                  className={`flex flex-col items-start p-3.5 rounded-2xl border-2 transition text-left lift press animate-pop-in stagger-${(i % 6) + 1} ${d.bg} ${d.border} ${!open ? "opacity-60" : ""}`}
+                >
+                  <div className="w-full flex items-start justify-between mb-2">
+                    <span className="text-3xl">{d.emoji}</span>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${open ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"}`}>
+                      {open ? "Open" : "Closed"}
+                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
+                  <p className="font-bold text-sm text-gray-800 leading-tight">{d.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{d.college}</p>
+                  <p className={`text-[10px] mt-0.5 font-semibold ${open ? "text-green-500" : "text-gray-400"}`}>{openLabel}</p>
+                </button>
+              );
+            })}
+          </div>
         )}
 
-        {/* ── Step 3: Triton2Go ── */}
-        <section>
-          <Step n={3} label="Confirm Triton2Go container" />
-          <button
-            onClick={() => setTriton(!triton)}
-            className={`mt-3 w-full flex items-center gap-4 rounded-2xl border-2 px-4 py-4 transition ${
-              triton ? "bg-green-50 border-green-400" : "bg-white border-gray-200 hover:border-gray-300"
-            }`}
-          >
-            <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${triton ? "bg-green-500 border-green-500 scale-110" : "border-gray-300"}`}>
-              {triton && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-            </div>
-            <div className="text-left">
-              <p className="font-bold text-gray-800">🥡 Yes, it&apos;s in a Triton2Go container</p>
-              <p className="text-xs text-gray-400 mt-0.5">Eco-friendly reusable container</p>
-            </div>
-          </button>
-        </section>
-
-        {/* ── Step 4: Screenshot + OCR ── */}
-        <section>
-          <Step n={4} label="Upload your Triton2Go confirmation" />
-          <p className="text-xs text-gray-400 mt-1 mb-3">
-            We&apos;ll automatically read your order details, student ID last 4, and pickup time from the screenshot.
-          </p>
-
-          {!file ? (
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="w-full bg-white border-2 border-dashed border-gray-300 rounded-2xl py-10 flex flex-col items-center gap-2 hover:border-[#003087] hover:bg-[#003087]/3 transition"
-            >
-              <div className="w-12 h-12 bg-[#003087]/10 rounded-full flex items-center justify-center">
-                <Upload size={22} className="text-[#003087]"/>
-              </div>
-              <p className="text-sm font-semibold text-gray-600">Tap to upload screenshot</p>
-              <p className="text-xs text-gray-400">JPG · PNG · HEIC</p>
-            </button>
-          ) : (
-            <div className="rounded-2xl overflow-hidden border-2 border-gray-200 shadow-sm">
-              <div className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={preview!} alt="screenshot" className="w-full max-h-52 object-cover"/>
-                <button onClick={clearFile} className="absolute top-2 right-2 w-7 h-7 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition">
-                  <X size={13}/>
+        {/* ── STEP 2: Station picker ── */}
+        {step === "station" && (
+          <div className="flex flex-col gap-3 animate-fade-in">
+            {cartCount > 0 && (
+              <div className="bg-[#003087]/5 border border-[#003087]/20 rounded-2xl px-4 py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-[#003087]">{cartCount} item{cartCount > 1 ? "s" : ""} · ${cartTotal.toFixed(2)}</p>
+                  <p className="text-xs text-gray-400">Tap to review your cart</p>
+                </div>
+                <button onClick={() => setStep("items")} className="text-xs font-bold text-white bg-[#003087] px-3 py-2 rounded-xl flex items-center gap-1 press">
+                  Review <ChevronRight size={13}/>
                 </button>
               </div>
-
-              {/* Analysis state */}
-              {analyzing && (
-                <div className="px-4 py-4 bg-[#003087]/5 flex items-center gap-3">
-                  <Loader2 size={18} className="text-[#003087] animate-spin flex-shrink-0"/>
-                  <div>
-                    <p className="text-sm font-bold text-[#003087]">Reading your screenshot…</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Extracting order details with AI</p>
+            )}
+            {menu.map((group, idx) => {
+              const emojiMatch = group.category.match(/^\S+/);
+              const emoji = emojiMatch ? emojiMatch[0] : "🍽";
+              const stationName = group.category.replace(/^\S+\s*/, "");
+              const stationCartCount = group.items.reduce((sum, item) => sum + (cart[item.name] ?? 0), 0);
+              return (
+                <button
+                  key={idx}
+                  onClick={() => { setStationIdx(idx); setStep("items"); }}
+                  className={`flex items-center gap-4 bg-white rounded-2xl border-2 shadow-sm p-4 text-left hover:shadow-md transition lift press animate-slide-up ${stationCartCount > 0 ? "border-[#003087]/30 bg-[#003087]/2" : "border-gray-100"}`}
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-3xl flex-shrink-0 border border-gray-100">
+                    {emoji}
                   </div>
-                </div>
-              )}
-
-              {/* OCR success */}
-              {extracted && !analyzing && (
-                <div className="px-4 py-4 bg-green-50 border-t-2 border-green-200 animate-slide-up">
-                  <div className="flex items-center gap-2 mb-3">
-                    <CheckCircle size={16} className="text-green-600 flex-shrink-0"/>
-                    <p className="text-sm font-bold text-green-800">Screenshot read successfully</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-800">{stationName}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{group.items.length} items</p>
+                    {stationCartCount > 0 && (
+                      <p className="text-xs font-bold text-[#003087] mt-1">{stationCartCount} added to cart</p>
+                    )}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { label: "Student ID (last 4)", value: extracted.pid_last4 },
-                      { label: "Pickup Time",          value: extracted.pickup_time },
-                      { label: "Order #",              value: extracted.order_number },
-                      { label: "Dining Hall",          value: extracted.dining_hall },
-                    ].map(({ label, value }) => value && (
-                      <div key={label} className="bg-white rounded-xl px-3 py-2 border border-green-100">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</p>
-                        <p className="text-sm font-bold text-[#003087] mt-0.5">{value}</p>
+                  {stationCartCount > 0 ? (
+                    <span className="w-6 h-6 rounded-full bg-[#003087] text-white text-xs font-black flex items-center justify-center flex-shrink-0 animate-pop-in">{stationCartCount}</span>
+                  ) : (
+                    <ChevronRight size={16} className="text-gray-300 flex-shrink-0"/>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── STEP 3: Items + order form ── */}
+        {step === "items" && currentStation && (
+          <div className="flex flex-col gap-6 animate-fade-in">
+
+            {/* Items for selected station */}
+            <div>
+              <Step n={3} label="Select what you ordered" />
+              <div className="mt-3 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-100">
+                {currentStation.items.map((item) => {
+                  const qty = cart[item.name] ?? 0;
+                  return (
+                    <div key={item.name} className="flex items-center justify-between px-4 py-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">{item.name}</p>
+                        <p className="text-xs text-gray-400">${item.price.toFixed(2)}</p>
                       </div>
-                    ))}
+                      <div className="flex items-center gap-2">
+                        {qty > 0 ? (
+                          <>
+                            <button onClick={() => sub(item.name)} className="w-7 h-7 rounded-full border-2 border-[#003087] flex items-center justify-center text-[#003087] hover:bg-[#003087] hover:text-white transition">
+                              <Minus size={12}/>
+                            </button>
+                            <span className="w-5 text-center text-sm font-bold text-[#003087]">{qty}</span>
+                            <button onClick={() => add(item.name)} className="w-7 h-7 rounded-full bg-[#003087] flex items-center justify-center text-white hover:bg-[#002060] transition">
+                              <Plus size={12}/>
+                            </button>
+                          </>
+                        ) : (
+                          <button onClick={() => add(item.name)} className="w-7 h-7 rounded-full border-2 border-gray-200 flex items-center justify-center text-gray-400 hover:border-[#003087] hover:text-[#003087] transition">
+                            <Plus size={12}/>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setStep("station")}
+                className="mt-2.5 w-full flex items-center justify-center gap-2 text-sm font-semibold text-[#003087] bg-[#003087]/5 border border-[#003087]/15 rounded-2xl py-3 hover:bg-[#003087]/10 transition press"
+              >
+                <Plus size={14}/> Order from another station
+              </button>
+            </div>
+
+            {/* Cart summary */}
+            {cartCount > 0 && (
+              <div className="bg-[#003087]/5 rounded-2xl p-4 border border-[#003087]/10 animate-scale-in">
+                <p className="text-xs font-bold text-[#003087] uppercase tracking-wide mb-2">Your Cart</p>
+                <div className="flex flex-col gap-1">
+                  {Object.entries(cart).map(([name, qty]) => {
+                    const price = allItems.find(i => i.name === name)?.price ?? 0;
+                    return (
+                      <div key={name} className="flex justify-between text-sm">
+                        <span className="text-gray-600">{qty}× {name}</span>
+                        <span className="font-semibold text-gray-800">${(price * qty).toFixed(2)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="border-t border-[#003087]/15 mt-2 pt-2 flex justify-between text-sm font-black text-[#003087]">
+                  <span>Subtotal</span>
+                  <span>${cartTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Triton2Go */}
+            <section>
+              <Step n={4} label="Confirm Triton2Go container" />
+              <button
+                onClick={() => setTriton(!triton)}
+                className={`mt-3 w-full flex items-center gap-4 rounded-2xl border-2 px-4 py-4 transition ${triton ? "bg-green-50 border-green-400" : "bg-white border-gray-200 hover:border-gray-300"}`}
+              >
+                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${triton ? "bg-green-500 border-green-500 scale-110" : "border-gray-300"}`}>
+                  {triton && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </div>
+                <div className="text-left">
+                  <p className="font-bold text-gray-800">🥡 Yes, it&apos;s in a Triton2Go container</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Eco-friendly reusable container</p>
+                </div>
+              </button>
+            </section>
+
+            {/* Screenshot OCR */}
+            <section>
+              <Step n={5} label="Upload your Triton2Go confirmation" />
+              <p className="text-xs text-gray-400 mt-1 mb-3">
+                We&apos;ll automatically read your order details, student ID last 4, and pickup time from the screenshot.
+              </p>
+              {!file ? (
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="w-full bg-white border-2 border-dashed border-gray-300 rounded-2xl py-10 flex flex-col items-center gap-2 hover:border-[#003087] hover:bg-[#003087]/3 transition"
+                >
+                  <div className="w-12 h-12 bg-[#003087]/10 rounded-full flex items-center justify-center">
+                    <Upload size={22} className="text-[#003087]"/>
                   </div>
-                  {extracted.items && extracted.items.length > 0 && (
-                    <div className="mt-2 bg-white rounded-xl px-3 py-2 border border-green-100">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Items from Screenshot</p>
-                      {extracted.items.map((item: string, i: number) => (
-                        <p key={i} className="text-xs text-gray-700">• {item}</p>
-                      ))}
+                  <p className="text-sm font-semibold text-gray-600">Tap to upload screenshot</p>
+                  <p className="text-xs text-gray-400">JPG · PNG · HEIC</p>
+                </button>
+              ) : (
+                <div className="rounded-2xl overflow-hidden border-2 border-gray-200 shadow-sm">
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={preview!} alt="screenshot" className="w-full max-h-52 object-cover"/>
+                    <button onClick={clearFile} className="absolute top-2 right-2 w-7 h-7 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition">
+                      <X size={13}/>
+                    </button>
+                  </div>
+                  {analyzing && (
+                    <div className="px-4 py-4 bg-[#003087]/5 flex items-center gap-3">
+                      <Loader2 size={18} className="text-[#003087] animate-spin flex-shrink-0"/>
+                      <div>
+                        <p className="text-sm font-bold text-[#003087]">Reading your screenshot…</p>
+                        <p className="text-xs text-gray-400 mt-0.5">Extracting order details with AI</p>
+                      </div>
                     </div>
                   )}
-                  <p className="text-xs text-gray-400 mt-2">This info will be sent to your Dasher automatically.</p>
+                  {extracted && !analyzing && (
+                    <div className="px-4 py-4 bg-green-50 border-t-2 border-green-200 animate-slide-up">
+                      <div className="flex items-center gap-2 mb-3">
+                        <CheckCircle size={16} className="text-green-600 flex-shrink-0"/>
+                        <p className="text-sm font-bold text-green-800">Screenshot read successfully</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { label: "Student ID (last 4)", value: extracted.pid_last4 },
+                          { label: "Pickup Time",          value: extracted.pickup_time },
+                          { label: "Order #",              value: extracted.order_number },
+                          { label: "Dining Hall",          value: extracted.dining_hall },
+                        ].map(({ label, value }) => value && (
+                          <div key={label} className="bg-white rounded-xl px-3 py-2 border border-green-100">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</p>
+                            <p className="text-sm font-bold text-[#003087] mt-0.5">{value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {extracted.items && extracted.items.length > 0 && (
+                        <div className="mt-2 bg-white rounded-xl px-3 py-2 border border-green-100">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Items from Screenshot</p>
+                          {extracted.items.map((item: string, i: number) => (
+                            <p key={i} className="text-xs text-gray-700">• {item}</p>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-400 mt-2">This info will be sent to your Dasher automatically.</p>
+                    </div>
+                  )}
+                  {ocrError && !analyzing && (
+                    <div className="px-4 py-3 bg-amber-50 border-t border-amber-200 flex items-start gap-2">
+                      <AlertCircle size={15} className="text-amber-500 flex-shrink-0 mt-0.5"/>
+                      <div>
+                        <p className="text-xs font-bold text-amber-800">Couldn&apos;t read the screenshot automatically</p>
+                        <p className="text-xs text-amber-600 mt-0.5">That&apos;s OK — your Dasher will still receive your order details.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile}/>
+            </section>
 
-              {/* OCR error */}
-              {ocrError && !analyzing && (
-                <div className="px-4 py-3 bg-amber-50 border-t border-amber-200 flex items-start gap-2">
-                  <AlertCircle size={15} className="text-amber-500 flex-shrink-0 mt-0.5"/>
-                  <div>
-                    <p className="text-xs font-bold text-amber-800">Couldn&apos;t read the screenshot automatically</p>
-                    <p className="text-xs text-amber-600 mt-0.5">That&apos;s OK — your Dasher will still receive your order details.</p>
+            {/* Delivery address */}
+            <section>
+              <Step n={6} label="Where should we deliver?" />
+              <div className="mt-3 flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Building</label>
+                  <select value={building} onChange={e => setBuilding(e.target.value)} className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition appearance-none">
+                    {BUILDINGS.map(b => <option key={b}>{b}</option>)}
+                  </select>
+                </div>
+                <button onClick={() => setToDoor(!toDoor)} className={`flex items-center gap-4 rounded-2xl border-2 px-4 py-4 transition text-left ${toDoor ? "bg-[#003087]/5 border-[#003087]" : "bg-white border-gray-200 hover:border-gray-300"}`}>
+                  <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${toDoor ? "bg-[#003087] border-[#003087] scale-110" : "border-gray-300"}`}>
+                    {toDoor && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile}/>
-        </section>
-
-        {/* ── Step 5: Delivery Address ── */}
-        <section>
-          <Step n={5} label="Where should we deliver?" />
-          <div className="mt-3 flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Building</label>
-              <select
-                value={building}
-                onChange={e => setBuilding(e.target.value)}
-                className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition appearance-none"
-              >
-                {BUILDINGS.map(b => <option key={b}>{b}</option>)}
-              </select>
-            </div>
-
-            {/* To-door upgrade */}
-            <button
-              onClick={() => setToDoor(!toDoor)}
-              className={`flex items-center gap-4 rounded-2xl border-2 px-4 py-4 transition text-left ${
-                toDoor ? "bg-[#003087]/5 border-[#003087]" : "bg-white border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${toDoor ? "bg-[#003087] border-[#003087] scale-110" : "border-gray-300"}`}>
-                {toDoor && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-              </div>
-              <div>
-                <p className="font-bold text-gray-800">🚪 Deliver to my room door <span className="text-[#003087]">+$2.00</span></p>
-                <p className="text-xs text-gray-400 mt-0.5">Dasher will bring it directly to your door</p>
-              </div>
-            </button>
-
-            {toDoor && (
-              <div className="animate-fade-in flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Room Number</label>
-                <input
-                  className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition"
-                  placeholder="e.g. 214B"
-                  value={room}
-                  onChange={e => setRoom(e.target.value)}
-                />
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ── Step 6: Schedule ── */}
-        <section>
-          <Step n={6} label="When do you want delivery?" />
-          <div className="mt-3 flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setScheduleMode(false)}
-                className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-bold transition ${
-                  !scheduleMode ? "border-[#003087] bg-[#003087]/5 text-[#003087]" : "border-gray-200 bg-white text-gray-500"
-                }`}
-              >
-                ⚡ ASAP
-              </button>
-              <button
-                onClick={() => setScheduleMode(true)}
-                className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-bold transition ${
-                  scheduleMode ? "border-[#F5B700] bg-[#F5B700]/10 text-[#003087]" : "border-gray-200 bg-white text-gray-500"
-                }`}
-              >
-                <Clock size={15}/> Schedule
-              </button>
-            </div>
-            {scheduleMode && (
-              <div className="animate-fade-in flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Delivery Time</label>
-                <input
-                  type="datetime-local"
-                  className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition"
-                  value={scheduledFor}
-                  onChange={e => setScheduledFor(e.target.value)}
-                  min={new Date(Date.now() + 15 * 60 * 1000).toISOString().slice(0, 16)}
-                />
-                {scheduledFor && (
-                  <p className="text-xs text-[#003087] font-semibold">
-                    Order will appear to Dashers at the scheduled time
-                  </p>
+                  <div>
+                    <p className="font-bold text-gray-800">🚪 Deliver to my room door <span className="text-[#003087]">+$2.00</span></p>
+                    <p className="text-xs text-gray-400 mt-0.5">Dasher will bring it directly to your door</p>
+                  </div>
+                </button>
+                {toDoor && (
+                  <div className="animate-fade-in flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Room Number</label>
+                    <input className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition" placeholder="e.g. 214B" value={room} onChange={e => setRoom(e.target.value)}/>
+                  </div>
                 )}
               </div>
-            )}
+            </section>
+
+            {/* Schedule */}
+            <section>
+              <Step n={7} label="When do you want delivery?" />
+              <div className="mt-3 flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => setScheduleMode(false)} className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-bold transition ${!scheduleMode ? "border-[#003087] bg-[#003087]/5 text-[#003087]" : "border-gray-200 bg-white text-gray-500"}`}>⚡ ASAP</button>
+                  <button onClick={() => setScheduleMode(true)} className={`flex items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-bold transition ${scheduleMode ? "border-[#F5B700] bg-[#F5B700]/10 text-[#003087]" : "border-gray-200 bg-white text-gray-500"}`}><Clock size={15}/> Schedule</button>
+                </div>
+                {scheduleMode && (
+                  <div className="animate-fade-in flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Delivery Time</label>
+                    <input type="datetime-local" className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#003087]/20 focus:border-[#003087] transition" value={scheduledFor} onChange={e => setScheduledFor(e.target.value)} min={new Date(Date.now() + 15 * 60 * 1000).toISOString().slice(0, 16)}/>
+                    {scheduledFor && <p className="text-xs text-[#003087] font-semibold">Order will appear to Dashers at the scheduled time</p>}
+                  </div>
+                )}
+              </div>
+            </section>
+
           </div>
-        </section>
+        )}
 
       </main>
 
-      {/* CTA */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#F8FAFC]/95 backdrop-blur border-t border-gray-100">
-        <div className="max-w-md mx-auto">
-          <button
-            onClick={() => { if (canSubmit && !submitting) saveAndGo(); }}
-            disabled={!canSubmit || analyzing || submitting}
-            className={`w-full flex items-center justify-center gap-2 font-bold py-4 rounded-2xl shadow-lg transition text-base ${
-              canSubmit && !submitting
-                ? "bg-[#F5B700] text-[#003087] hover:bg-[#e0a800] active:scale-[0.98]"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            {submitting ? <><Loader2 size={18} className="animate-spin"/> Placing order…</> :
-             analyzing  ? <><Loader2 size={18} className="animate-spin"/> Analyzing…</> :
-             <>Submit Order <ChevronRight size={18}/></>}
-          </button>
-          {!canSubmit && !analyzing && (
-            <p className="text-center text-xs text-gray-400 mt-2">
-              {!hall ? "Select a dining hall" : cartCount === 0 ? "Add at least one item" : !triton ? "Confirm Triton2Go container" : toDoor && !room.trim() ? "Enter your room number" : "Almost there!"}
-            </p>
-          )}
-          {apiError && (
-            <div className="mt-2 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
-              <AlertCircle size={14} className="text-red-500 flex-shrink-0"/>
-              <p className="text-xs text-red-700 font-semibold">{apiError}</p>
-            </div>
-          )}
+      {/* ── CTA: submit (step 3 only) ── */}
+      {step === "items" && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#F8FAFC]/95 backdrop-blur border-t border-gray-100">
+          <div className="max-w-md mx-auto">
+            <button
+              onClick={() => { if (canSubmit && !submitting) saveAndGo(); }}
+              disabled={!canSubmit || analyzing || submitting}
+              className={`w-full flex items-center justify-center gap-2 font-bold py-4 rounded-2xl shadow-lg transition text-base ${canSubmit && !submitting ? "bg-[#F5B700] text-[#003087] hover:bg-[#e0a800] active:scale-[0.98]" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}
+            >
+              {submitting ? <><Loader2 size={18} className="animate-spin"/> Placing order…</> :
+               analyzing  ? <><Loader2 size={18} className="animate-spin"/> Analyzing…</> :
+               <>Submit Order <ChevronRight size={18}/></>}
+            </button>
+            {!canSubmit && !analyzing && (
+              <p className="text-center text-xs text-gray-400 mt-2">
+                {cartCount === 0 ? "Add at least one item" : !triton ? "Confirm Triton2Go container" : toDoor && !room.trim() ? "Enter your room number" : "Almost there!"}
+              </p>
+            )}
+            {apiError && (
+              <div className="mt-2 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+                <AlertCircle size={14} className="text-red-500 flex-shrink-0"/>
+                <p className="text-xs text-red-700 font-semibold">{apiError}</p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ── CTA: view cart (step 2 only, when cart non-empty) ── */}
+      {step === "station" && cartCount > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#F8FAFC]/95 backdrop-blur border-t border-gray-100">
+          <div className="max-w-md mx-auto">
+            <button
+              onClick={() => setStep("items")}
+              className="w-full flex items-center justify-center gap-2 font-bold py-4 rounded-2xl shadow-lg bg-[#003087] text-white hover:bg-[#002060] transition press"
+            >
+              View cart ({cartCount} item{cartCount > 1 ? "s" : ""}) · ${cartTotal.toFixed(2)} <ChevronRight size={18}/>
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
+}
+
+export default function OrderPage() {
+  return <Suspense><OrderPageInner /></Suspense>;
 }
 
 function Step({ n, label }: { n: number; label: string }) {

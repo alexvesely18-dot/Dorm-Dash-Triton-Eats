@@ -315,7 +315,7 @@ export default function HomePage() {
               return (
                 <Link
                   key={d.id}
-                  href="/order"
+                  href={`/order?hall=${d.id}`}
                   className={`flex-shrink-0 rounded-2xl border shadow-sm px-3 py-2.5 flex flex-col items-center gap-1 min-w-[80px] lift press animate-pop-in stagger-${(i % 6) + 1} ${
                     open ? "bg-white border-gray-100" : "bg-gray-50 border-gray-200 opacity-60"
                   }`}
