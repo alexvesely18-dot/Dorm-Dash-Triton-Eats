@@ -219,28 +219,28 @@ export const BUILDING_COORDS: Record<string, { lat: number; lng: number }> = {
   "One Miramar Street":                 { lat: 32.8645, lng: -117.2268 },
 };
 
-declare global {
-  // eslint-disable-next-line no-var
-  var _orderStore: Map<string, Order> | undefined;
-  // eslint-disable-next-line no-var
-  var _orderSweepInterval: NodeJS.Timeout | undefined;
+import { redis } from "./redis";
+
+const PFX = "order:";
+const TTL_ACTIVE    = 60 * 60 * 2;   // 2 hours for pending/in-progress (auto-sweep)
+const TTL_DELIVERED = 60 * 60 * 24;  // 24 hours for delivered orders (admin history)
+
+export async function getOrder(id: string): Promise<Order | null> {
+  return redis.get<Order>(`${PFX}${id}`);
 }
 
-// Persist across hot-reloads in development
-export const orderStore: Map<string, Order> =
-  global._orderStore ?? (global._orderStore = new Map());
+export async function setOrder(id: string, order: Order): Promise<void> {
+  const ttl = order.status === "delivered" ? TTL_DELIVERED : TTL_ACTIVE;
+  await redis.set(`${PFX}${id}`, order, { ex: ttl });
+}
 
-// Hourly sweep: wipe any in-progress order (pending/claimed/picked_up) older than 1 hour.
-// Keeps demo state clean and prevents orphan orders from zombie clients.
-const ONE_HOUR_MS = 60 * 60 * 1000;
-if (!global._orderSweepInterval) {
-  global._orderSweepInterval = setInterval(() => {
-    const cutoff = Date.now() - ONE_HOUR_MS;
-    for (const [id, order] of orderStore) {
-      if (order.status === "delivered") continue;
-      if (new Date(order.createdAt).getTime() < cutoff) {
-        orderStore.delete(id);
-      }
-    }
-  }, ONE_HOUR_MS);
+export async function deleteOrder(id: string): Promise<void> {
+  await redis.del(`${PFX}${id}`);
+}
+
+export async function getAllOrders(): Promise<Order[]> {
+  const keys = await redis.keys(`${PFX}*`);
+  if (keys.length === 0) return [];
+  const values = await redis.mget<Order[]>(...keys);
+  return (values as (Order | null)[]).filter(Boolean) as Order[];
 }
