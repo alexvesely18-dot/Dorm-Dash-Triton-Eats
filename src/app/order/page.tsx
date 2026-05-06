@@ -32,7 +32,8 @@ const COLLEGE_TO_PRICING_ID: Record<string, CollegeId> = {
 };
 
 // UCSD campus bounding box
-const UCSD = { swLat: 32.8685, swLng: -117.2440, neLat: 32.8955, neLng: -117.2115 };
+// Bounding box covers main campus + Theatre District + off-campus UC housing (Miramar St)
+const UCSD = { swLat: 32.8630, swLng: -117.2460, neLat: 32.8960, neLng: -117.2115 };
 function isOnCampus(lat: number, lng: number) {
   return lat >= UCSD.swLat && lat <= UCSD.neLat && lng >= UCSD.swLng && lng <= UCSD.neLng;
 }

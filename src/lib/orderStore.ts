@@ -36,82 +36,189 @@ export type Order = {
 
 // All residential buildings grouped by college — used in signup, profile, and order pages
 export const BUILDINGS_BY_COLLEGE: Record<string, string[]> = {
-  "Revelle College":   ["Tioga Hall", "Tenaya Hall", "Tahoe Hall", "Shasta Hall"],
-  "Muir College":      ["Matthews Hall", "Muir Apartments"],
-  "Marshall College":  ["Marshall Upper Apartments", "Marshall Lower Apartments"],
-  "Warren College":    ["Warren Apartments", "Pepper Canyon Hall"],
-  "Roosevelt College": ["Cuicacalli", "Anza Hall", "De Anza Hall", "Rita Atkinson Residences"],
-  "Sixth College":     ["Mesa Nueva", "North Mesa Apartments"],
-  "Seventh College":   ["West Tower", "East Tower", "Eco Flats", "Mesa South"],
-  "Eighth College":    ["Nuevo East", "Nuevo West"],
+  "Revelle College": [
+    "Argo Hall", "Blake Hall",
+    "Atlantis Hall", "Beagle Hall", "Challenger Hall", "Discovery Hall", "Galathea Hall", "Meteor Hall",
+    "Keeling Apartments",
+  ],
+  "Muir College": [
+    "Tioga Hall", "Tenaya Hall", "Tuolumne Apartments", "Tamarack Apartments",
+  ],
+  "Marshall College": [
+    "Alianza Hall", "Umoja Hall", "Coalition Hall",
+  ],
+  "Warren College": [
+    "Frankfurter Hall", "Harlan Hall", "Stewart Hall",
+    "Bates Hall", "Black Hall", "Brennan Hall", "Brown Hall", "Douglas Hall", "Goldberg Hall",
+  ],
+  "Roosevelt College": [
+    "Africa Hall", "Asia Hall", "Europe Hall", "Latin America Hall", "North America Hall",
+    "Earth Hall", "Middle East Hall", "Oceania Hall", "Mesa Verde Hall",
+    "International House (I-House)",
+  ],
+  "Sixth College": [
+    "Catalyst Hall", "Kaleidoscope Hall", "Mosaic Hall", "Tapestry Hall",
+  ],
+  "Seventh College": [
+    "West Tower (North Star)", "Harbor", "Amanecer", "Solstice",
+    "East Tower (Hyperion)", "Borrego", "Quino", "Thornmint", "Vireo",
+  ],
+  "Eighth College": [
+    "Pulse", "Podemos", "Survivance", "Azad Hall", "Sankofa",
+  ],
+  "Village / Other": [
+    "Pepper Canyon East", "Pepper Canyon West – Rya Tower", "Pepper Canyon West – Vela Tower",
+    "Matthews Apartments", "Rita Atkinson Residences",
+    "Nuevo East", "Nuevo West", "One Miramar Street",
+  ],
 };
 
 // Map each building to the college that owns it — used to gate door-delivery claims
 export const BUILDING_COLLEGE: Record<string, string> = {
   // Revelle
-  "Tioga Hall":                  "Revelle College",
-  "Tenaya Hall":                 "Revelle College",
-  "Tahoe Hall":                  "Revelle College",
-  "Shasta Hall":                 "Revelle College",
+  "Argo Hall":                           "Revelle College",
+  "Blake Hall":                          "Revelle College",
+  "Atlantis Hall":                       "Revelle College",
+  "Beagle Hall":                         "Revelle College",
+  "Challenger Hall":                     "Revelle College",
+  "Discovery Hall":                      "Revelle College",
+  "Galathea Hall":                       "Revelle College",
+  "Meteor Hall":                         "Revelle College",
+  "Keeling Apartments":                  "Revelle College",
   // Muir
-  "Matthews Hall":               "Muir College",
-  "Muir Apartments":             "Muir College",
+  "Tioga Hall":                          "Muir College",
+  "Tenaya Hall":                         "Muir College",
+  "Tuolumne Apartments":                 "Muir College",
+  "Tamarack Apartments":                 "Muir College",
   // Marshall
-  "Marshall Upper Apartments":   "Marshall College",
-  "Marshall Lower Apartments":   "Marshall College",
+  "Alianza Hall":                        "Marshall College",
+  "Umoja Hall":                          "Marshall College",
+  "Coalition Hall":                      "Marshall College",
   // Warren
-  "Warren Apartments":           "Warren College",
-  "Pepper Canyon Hall":          "Warren College",
+  "Frankfurter Hall":                    "Warren College",
+  "Harlan Hall":                         "Warren College",
+  "Stewart Hall":                        "Warren College",
+  "Bates Hall":                          "Warren College",
+  "Black Hall":                          "Warren College",
+  "Brennan Hall":                        "Warren College",
+  "Brown Hall":                          "Warren College",
+  "Douglas Hall":                        "Warren College",
+  "Goldberg Hall":                       "Warren College",
   // Roosevelt
-  "Cuicacalli":                  "Roosevelt College",
-  "Anza Hall":                   "Roosevelt College",
-  "De Anza Hall":                "Roosevelt College",
-  "Rita Atkinson Residences":    "Roosevelt College",
+  "Africa Hall":                         "Roosevelt College",
+  "Asia Hall":                           "Roosevelt College",
+  "Europe Hall":                         "Roosevelt College",
+  "Latin America Hall":                  "Roosevelt College",
+  "North America Hall":                  "Roosevelt College",
+  "Earth Hall":                          "Roosevelt College",
+  "Middle East Hall":                    "Roosevelt College",
+  "Oceania Hall":                        "Roosevelt College",
+  "Mesa Verde Hall":                     "Roosevelt College",
+  "International House (I-House)":       "Roosevelt College",
   // Sixth
-  "Mesa Nueva":                  "Sixth College",
-  "North Mesa Apartments":       "Sixth College",
+  "Catalyst Hall":                       "Sixth College",
+  "Kaleidoscope Hall":                   "Sixth College",
+  "Mosaic Hall":                         "Sixth College",
+  "Tapestry Hall":                       "Sixth College",
   // Seventh
-  "West Tower":                  "Seventh College",
-  "East Tower":                  "Seventh College",
-  "Eco Flats":                   "Seventh College",
-  "Mesa South":                  "Seventh College",
+  "West Tower (North Star)":             "Seventh College",
+  "Harbor":                              "Seventh College",
+  "Amanecer":                            "Seventh College",
+  "Solstice":                            "Seventh College",
+  "East Tower (Hyperion)":              "Seventh College",
+  "Borrego":                             "Seventh College",
+  "Quino":                               "Seventh College",
+  "Thornmint":                           "Seventh College",
+  "Vireo":                               "Seventh College",
   // Eighth
-  "Nuevo East":                  "Eighth College",
-  "Nuevo West":                  "Eighth College",
+  "Pulse":                               "Eighth College",
+  "Podemos":                             "Eighth College",
+  "Survivance":                          "Eighth College",
+  "Azad Hall":                           "Eighth College",
+  "Sankofa":                             "Eighth College",
+  // Village / Other
+  "Pepper Canyon East":                  "",
+  "Pepper Canyon West – Rya Tower":      "",
+  "Pepper Canyon West – Vela Tower":     "",
+  "Matthews Apartments":                 "",
+  "Rita Atkinson Residences":            "",
+  "Nuevo East":                          "",
+  "Nuevo West":                          "",
+  "One Miramar Street":                  "",
 };
 
-// Approximate GPS coordinates for each dorm building
+// GPS coordinates for each dorm building (approximate, sourced from UCSD campus map)
 export const BUILDING_COORDS: Record<string, { lat: number; lng: number }> = {
-  // Revelle
-  "Tioga Hall":                { lat: 32.8733, lng: -117.2428 },
-  "Tenaya Hall":               { lat: 32.8736, lng: -117.2424 },
-  "Tahoe Hall":                { lat: 32.8738, lng: -117.2420 },
-  "Shasta Hall":               { lat: 32.8741, lng: -117.2416 },
-  // Muir
-  "Matthews Hall":             { lat: 32.8757, lng: -117.2418 },
-  "Muir Apartments":           { lat: 32.8751, lng: -117.2422 },
-  // Marshall
-  "Marshall Upper Apartments": { lat: 32.8762, lng: -117.2408 },
-  "Marshall Lower Apartments": { lat: 32.8758, lng: -117.2412 },
-  // Warren
-  "Warren Apartments":         { lat: 32.8836, lng: -117.2368 },
-  "Pepper Canyon Hall":        { lat: 32.8826, lng: -117.2358 },
-  // Roosevelt
-  "Cuicacalli":                { lat: 32.8791, lng: -117.2376 },
-  "Anza Hall":                 { lat: 32.8771, lng: -117.2370 },
-  "De Anza Hall":              { lat: 32.8768, lng: -117.2373 },
-  "Rita Atkinson Residences":  { lat: 32.8848, lng: -117.2405 },
-  // Sixth
-  "Mesa Nueva":                { lat: 32.8856, lng: -117.2424 },
-  "North Mesa Apartments":     { lat: 32.8860, lng: -117.2420 },
-  // Seventh
-  "West Tower":                { lat: 32.8895, lng: -117.2403 },
-  "East Tower":                { lat: 32.8893, lng: -117.2397 },
-  "Eco Flats":                 { lat: 32.8888, lng: -117.2407 },
-  "Mesa South":                { lat: 32.8884, lng: -117.2400 },
-  // Eighth
-  "Nuevo East":                { lat: 32.8914, lng: -117.2402 },
-  "Nuevo West":                { lat: 32.8912, lng: -117.2410 },
+  // Revelle College
+  "Argo Hall":                          { lat: 32.8718, lng: -117.2412 },
+  "Blake Hall":                         { lat: 32.8721, lng: -117.2408 },
+  "Atlantis Hall":                      { lat: 32.8726, lng: -117.2414 },
+  "Beagle Hall":                        { lat: 32.8724, lng: -117.2416 },
+  "Challenger Hall":                    { lat: 32.8722, lng: -117.2416 },
+  "Discovery Hall":                     { lat: 32.8720, lng: -117.2418 },
+  "Galathea Hall":                      { lat: 32.8718, lng: -117.2416 },
+  "Meteor Hall":                        { lat: 32.8716, lng: -117.2414 },
+  "Keeling Apartments":                 { lat: 32.8710, lng: -117.2418 },
+  // Muir College
+  "Tioga Hall":                         { lat: 32.8760, lng: -117.2398 },
+  "Tenaya Hall":                        { lat: 32.8762, lng: -117.2403 },
+  "Tuolumne Apartments":                { lat: 32.8755, lng: -117.2410 },
+  "Tamarack Apartments":                { lat: 32.8758, lng: -117.2406 },
+  // Marshall College (Ridge Walk North LLN)
+  "Alianza Hall":                       { lat: 32.8796, lng: -117.2388 },
+  "Umoja Hall":                         { lat: 32.8793, lng: -117.2385 },
+  "Coalition Hall":                     { lat: 32.8790, lng: -117.2382 },
+  // Warren College
+  "Frankfurter Hall":                   { lat: 32.8828, lng: -117.2341 },
+  "Harlan Hall":                        { lat: 32.8825, lng: -117.2338 },
+  "Stewart Hall":                       { lat: 32.8822, lng: -117.2335 },
+  "Bates Hall":                         { lat: 32.8832, lng: -117.2330 },
+  "Black Hall":                         { lat: 32.8835, lng: -117.2328 },
+  "Brennan Hall":                       { lat: 32.8838, lng: -117.2325 },
+  "Brown Hall":                         { lat: 32.8840, lng: -117.2322 },
+  "Douglas Hall":                       { lat: 32.8842, lng: -117.2320 },
+  "Goldberg Hall":                      { lat: 32.8844, lng: -117.2318 },
+  // Roosevelt College (ERC)
+  "Africa Hall":                        { lat: 32.8852, lng: -117.2310 },
+  "Asia Hall":                          { lat: 32.8855, lng: -117.2307 },
+  "Europe Hall":                        { lat: 32.8858, lng: -117.2305 },
+  "Latin America Hall":                 { lat: 32.8861, lng: -117.2303 },
+  "North America Hall":                 { lat: 32.8864, lng: -117.2300 },
+  "Earth Hall":                         { lat: 32.8848, lng: -117.2296 },
+  "Middle East Hall":                   { lat: 32.8846, lng: -117.2300 },
+  "Oceania Hall":                       { lat: 32.8843, lng: -117.2303 },
+  "Mesa Verde Hall":                    { lat: 32.8840, lng: -117.2305 },
+  "International House (I-House)":      { lat: 32.8867, lng: -117.2296 },
+  // Sixth College (North Torrey Pines LLN)
+  "Catalyst Hall":                      { lat: 32.8913, lng: -117.2436 },
+  "Kaleidoscope Hall":                  { lat: 32.8915, lng: -117.2442 },
+  "Mosaic Hall":                        { lat: 32.8908, lng: -117.2434 },
+  "Tapestry Hall":                      { lat: 32.8910, lng: -117.2440 },
+  // Seventh College
+  "West Tower (North Star)":            { lat: 32.8880, lng: -117.2388 },
+  "Harbor":                             { lat: 32.8877, lng: -117.2386 },
+  "Amanecer":                           { lat: 32.8874, lng: -117.2384 },
+  "Solstice":                           { lat: 32.8871, lng: -117.2382 },
+  "East Tower (Hyperion)":             { lat: 32.8882, lng: -117.2368 },
+  "Borrego":                            { lat: 32.8879, lng: -117.2366 },
+  "Quino":                              { lat: 32.8876, lng: -117.2364 },
+  "Thornmint":                          { lat: 32.8873, lng: -117.2362 },
+  "Vireo":                              { lat: 32.8870, lng: -117.2360 },
+  // Eighth College (Theatre District LLN)
+  "Pulse":                              { lat: 32.8700, lng: -117.2415 },
+  "Podemos":                            { lat: 32.8697, lng: -117.2412 },
+  "Survivance":                         { lat: 32.8695, lng: -117.2410 },
+  "Azad Hall":                          { lat: 32.8693, lng: -117.2408 },
+  "Sankofa":                            { lat: 32.8691, lng: -117.2406 },
+  // Village / Other
+  "Pepper Canyon East":                 { lat: 32.8795, lng: -117.2295 },
+  "Pepper Canyon West – Rya Tower":     { lat: 32.8806, lng: -117.2290 },
+  "Pepper Canyon West – Vela Tower":    { lat: 32.8802, lng: -117.2290 },
+  "Matthews Apartments":                { lat: 32.8798, lng: -117.2292 },
+  "Rita Atkinson Residences":           { lat: 32.8810, lng: -117.2288 },
+  "Nuevo East":                         { lat: 32.8658, lng: -117.2216 },
+  "Nuevo West":                         { lat: 32.8660, lng: -117.2240 },
+  "One Miramar Street":                 { lat: 32.8645, lng: -117.2268 },
 };
 
 declare global {
