@@ -54,16 +54,16 @@ export async function POST(req: NextRequest) {
             },
             {
               type: "text",
-              text: `This is a screenshot from the UCSD Triton2Go dining app. Extract these fields and return ONLY valid JSON with no markdown or explanation:
+              text: `This is a screenshot from the UCSD Triton2Go dining app receipt. Extract these fields and return ONLY valid JSON with no markdown or explanation:
 {
-  "pid_last4": "last 4 digits of student PID/ID number",
-  "order_number": "order or confirmation number",
-  "dining_hall": "name of the dining hall",
-  "items": ["item 1", "item 2"],
-  "pickup_time": "target pickup time",
-  "total": "order total if visible"
+  "pid_last4": "LAST 4 DIGITS ONLY of the transaction/receipt number shown after the # symbol at the top of the receipt (e.g. if the receipt shows #121358263 then pid_last4 is '8263'). This is a 9-digit number. Extract only the final 4 digits as a string.",
+  "order_number": "the full transaction number shown after # (e.g. '121358263')",
+  "dining_hall": "name of the dining location (e.g. 'Bistro', '64 Degrees')",
+  "items": ["each food item ordered, as a string"],
+  "pickup_time": "pickup or order time if shown (e.g. '1:02 PM')",
+  "total": "order total dollar amount if visible (e.g. '$16.00')"
 }
-Use null for any field not visible or unclear.`,
+Use null for any field not visible. For pid_last4 always return exactly 4 digit characters.`,
             },
           ],
         },
