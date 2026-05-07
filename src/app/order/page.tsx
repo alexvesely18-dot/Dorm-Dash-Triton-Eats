@@ -649,6 +649,7 @@ function OrderPageInner() {
   const [analyzing, setAnalyzing] = useState(false);
   const [extracted, setExtracted] = useState<Extracted | null>(null);
   const [ocrError, setOcrError] = useState(false);
+  const [ocrErrorMsg, setOcrErrorMsg] = useState("");
   const [manualLast4, setManualLast4] = useState("");
   const [manualOrderNum, setManualOrderNum] = useState("");
   const [manualPickupTime, setManualPickupTime] = useState("");
@@ -730,6 +731,7 @@ function OrderPageInner() {
     setPreview(URL.createObjectURL(f));
     setExtracted(null);
     setOcrError(false);
+    setOcrErrorMsg("");
     setAnalyzing(true);
 
     const reader = new FileReader();
@@ -746,9 +748,10 @@ function OrderPageInner() {
         });
         const json = await res.json();
         if (json.success) setExtracted(json.data);
-        else setOcrError(true);
-      } catch {
+        else { setOcrError(true); setOcrErrorMsg(json.error ?? "Unknown error"); }
+      } catch (err) {
         setOcrError(true);
+        setOcrErrorMsg(err instanceof Error && err.name === "AbortError" ? "Timed out — try a smaller screenshot" : "Network error");
       } finally {
         clearTimeout(timeout);
       }
@@ -758,7 +761,7 @@ function OrderPageInner() {
   };
 
   const clearFile = () => {
-    setFile(null); setPreview(null); setExtracted(null); setOcrError(false);
+    setFile(null); setPreview(null); setExtracted(null); setOcrError(false); setOcrErrorMsg("");
     setManualLast4(""); setManualOrderNum(""); setManualPickupTime("");
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -1137,7 +1140,11 @@ function OrderPageInner() {
                         <AlertCircle size={15} className="text-amber-500 flex-shrink-0 mt-0.5"/>
                         <div>
                           <p className="text-xs font-bold text-amber-800">Couldn&apos;t read automatically — enter details below</p>
-                          <p className="text-xs text-amber-600 mt-0.5">Type in the info from your Triton2Go receipt.</p>
+                          {ocrErrorMsg ? (
+                            <p className="text-xs text-amber-700 font-mono mt-0.5 break-all">{ocrErrorMsg}</p>
+                          ) : (
+                            <p className="text-xs text-amber-600 mt-0.5">Type in the info from your Triton2Go receipt.</p>
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
