@@ -1,9 +1,18 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, getIp } from "@/lib/rateLimit";
-import { isBase64SizeOk, isOneOf, sanitizeText } from "@/lib/validate";
+import { isBase64SizeOk } from "@/lib/validate";
+
+// Allow up to 60s — Anthropic vision calls can take 15-20s on larger images
+export const maxDuration = 60;
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
+type AllowedMime = typeof ALLOWED_MIME_TYPES[number];
+
+function normalizeMime(raw: unknown): AllowedMime {
+  if (ALLOWED_MIME_TYPES.includes(raw as AllowedMime)) return raw as AllowedMime;
+  return "image/jpeg";
+}
 
 export async function POST(req: NextRequest) {
   const ip = getIp(req);
@@ -24,16 +33,17 @@ export async function POST(req: NextRequest) {
 
   const { imageBase64, mimeType } = body;
 
-  if (!isOneOf(mimeType, [...ALLOWED_MIME_TYPES])) {
-    return NextResponse.json({ success: false, error: "Unsupported image type" }, { status: 400 });
-  }
-
   if (!isBase64SizeOk(imageBase64, 10_000_000)) {
     return NextResponse.json({ success: false, error: "Image too large (max 10 MB)" }, { status: 413 });
   }
 
-  const safeBase64 = sanitizeText(imageBase64 as string, 15_000_000).replace(/[^A-Za-z0-9+/=]/g, "");
+  // Strip any non-base64 characters
+  const safeBase64 = String(imageBase64 ?? "").replace(/[^A-Za-z0-9+/=]/g, "");
+  if (!safeBase64) {
+    return NextResponse.json({ success: false, error: "Empty image data" }, { status: 400 });
+  }
 
+  const safeMime = normalizeMime(mimeType);
   const client = new Anthropic();
 
   try {
@@ -48,7 +58,7 @@ export async function POST(req: NextRequest) {
               type: "image",
               source: {
                 type: "base64",
-                media_type: mimeType as typeof ALLOWED_MIME_TYPES[number],
+                media_type: safeMime,
                 data: safeBase64,
               },
             },
@@ -70,13 +80,11 @@ Use null for any field not visible. For pid_last4 always return exactly 4 digit 
       ],
     });
 
-    const raw =
-      message.content[0].type === "text" ? message.content[0].text.trim() : "";
-    const jsonStr = raw
-      .replace(/^```json?\n?/, "")
-      .replace(/\n?```$/, "")
-      .trim();
-    const data = JSON.parse(jsonStr);
+    const raw = message.content[0].type === "text" ? message.content[0].text.trim() : "";
+    // Find the first JSON object in the response, ignoring any surrounding text
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON object in response");
+    const data = JSON.parse(jsonMatch[0]);
 
     return NextResponse.json({ success: true, data });
   } catch (err) {

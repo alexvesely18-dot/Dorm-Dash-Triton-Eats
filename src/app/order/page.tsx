@@ -741,7 +741,7 @@ function OrderPageInner() {
         const res = await fetch("/api/analyze-screenshot", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: base64, mimeType: f.type || "image/jpeg" }),
+          body: JSON.stringify({ imageBase64: base64, mimeType: ["image/jpeg","image/png","image/gif","image/webp"].includes(f.type) ? f.type : "image/jpeg" }),
           signal: controller.signal,
         });
         const json = await res.json();
@@ -763,7 +763,7 @@ function OrderPageInner() {
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  const canSubmit = hall && cartCount > 0 && triton && building;
+  const canSubmit = hall && cartCount > 0 && triton && building && (!toDoor || room.trim().length > 0);
 
   const hallData = HALLS.find((h) => h.id === hall);
   const currentStation = menu[stationIdx];
