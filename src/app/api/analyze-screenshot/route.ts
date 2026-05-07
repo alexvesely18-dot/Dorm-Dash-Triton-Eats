@@ -21,7 +21,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ success: false, error: "No API key configured" });
+    return NextResponse.json(
+      { success: false, error: "ANTHROPIC_API_KEY not set on server" },
+      { status: 500 }
+    );
   }
 
   let body: Record<string, unknown>;
@@ -80,18 +83,40 @@ Use null for any field not visible. For pid_last4 always return exactly 4 digit 
       ],
     });
 
-    const raw = message.content[0].type === "text" ? message.content[0].text.trim() : "";
-    // Find the first JSON object in the response, ignoring any surrounding text
+    const raw = message.content[0]?.type === "text" ? message.content[0].text.trim() : "";
+    if (!raw) {
+      return NextResponse.json(
+        { success: false, error: "Empty model response" },
+        { status: 502 }
+      );
+    }
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON object in response");
-    const data = JSON.parse(jsonMatch[0]);
+    if (!jsonMatch) {
+      return NextResponse.json(
+        { success: false, error: `No JSON in response: ${raw.slice(0, 200)}` },
+        { status: 502 }
+      );
+    }
+    let data: unknown;
+    try {
+      data = JSON.parse(jsonMatch[0]);
+    } catch (parseErr) {
+      const msg = parseErr instanceof Error ? parseErr.message : String(parseErr);
+      return NextResponse.json(
+        { success: false, error: `JSON parse failed: ${msg}` },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({ success: true, data });
   } catch (err) {
     console.error("OCR error:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    const status =
+      err instanceof Anthropic.APIError && typeof err.status === "number" ? err.status : 500;
     return NextResponse.json(
-      { success: false, error: "Analysis failed" },
-      { status: 500 }
+      { success: false, error: message || "Analysis failed" },
+      { status }
     );
   }
 }
