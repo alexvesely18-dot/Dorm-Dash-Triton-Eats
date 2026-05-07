@@ -741,7 +741,7 @@ function OrderPageInner() {
         const res = await fetch("/api/analyze-screenshot", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: base64, mimeType: f.type || "image/jpeg" }),
+          body: JSON.stringify({ imageBase64: base64, mimeType: ["image/jpeg","image/png","image/gif","image/webp"].includes(f.type) ? f.type : "image/jpeg" }),
           signal: controller.signal,
         });
         const json = await res.json();
