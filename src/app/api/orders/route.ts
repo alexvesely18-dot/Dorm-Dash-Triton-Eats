@@ -129,6 +129,7 @@ async function handlePost(req: NextRequest) {
     order_number:    sanitizeText(String(body.order_number ?? id), 30),
     subtotal:        breakdown.subtotal,
     deliveryFee:     breakdown.deliveryFee,
+    roomFee:         breakdown.roomFee,
     total:           breakdown.total,
     tier:            breakdown.tier,
     building:        sanitizeText(String(body.building      ?? ""), 100),

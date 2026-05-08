@@ -96,6 +96,8 @@ export const PRICING = {
   drinkItem:    0.50,
   minTotal:     4.00,
   roomDelivery: 2.00,
+  // Dasher receives this fraction of (deliveryFee + roomFee). Platform keeps the rest.
+  dasherPayoutRatio: 0.5,
   delivery: {
     close:  { floor: 2.00, rate: 0.25 },
     medium: { floor: 2.00, rate: 0.30 },
@@ -156,6 +158,13 @@ export function calculateOrder(input: OrderInput): OrderBreakdown {
     deliveryFee, roomFee, total,
     meetsMinimum, minimumShortfall,
   };
+}
+
+// 50% of the fees the student paid for getting it there. Single source of truth
+// — both the dasher delivery screen and any earnings UI should call this so a
+// future ratio change touches one place.
+export function dasherEarning(deliveryFee: number, roomFee: number): number {
+  return round2((deliveryFee + roomFee) * PRICING.dasherPayoutRatio);
 }
 
 export function formatUSD(n: number): string {

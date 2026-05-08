@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { MapPin, Package, MessageCircle, CheckCircle, ChevronRight, Building2 } from "lucide-react";
 import type { Order } from "@/lib/orderStore";
+import { dasherEarning } from "@/lib/pricing";
 
 const LiveMap = dynamic(() => import("@/components/LiveMap"), { ssr: false, loading: () => <div className="w-full h-full bg-[#E8F0E4] animate-pulse"/> });
 
@@ -117,7 +118,7 @@ export default function DasherDeliveryPage() {
         hall: order.hall,
         hallEmoji: order.hallEmoji,
         building: order.building,
-        earning: 4.75 + (order.toDoor ? 2.0 : 0),
+        earning: dasherEarning(order.deliveryFee, order.roomFee ?? (order.toDoor ? 2.0 : 0)),
         toDoor: order.toDoor,
         completedAt: new Date().toISOString(),
       };

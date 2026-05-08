@@ -15,6 +15,7 @@ export type Order = {
   total: number;
   subtotal: number;
   deliveryFee: number;
+  roomFee: number;
   tier: 'close' | 'medium' | 'far';
   building: string;
   deliveryCollege: string;

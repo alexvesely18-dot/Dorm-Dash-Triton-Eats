@@ -8,7 +8,7 @@ export default function DasherCompletePage() {
   const [stars, setStars] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [submitted, setSubmitted] = useState(false);
-  const [earning, setEarning] = useState(4.75);
+  const [earning, setEarning] = useState(0);
   const [toDoor, setToDoor] = useState(false);
   const [todayTotal, setTodayTotal] = useState(0);
 
@@ -17,7 +17,7 @@ export default function DasherCompletePage() {
       const history = JSON.parse(localStorage.getItem("dasher_history") ?? "[]");
       if (history.length > 0) {
         const latest = history[0];
-        setEarning(latest.earning ?? 4.75);
+        setEarning(latest.earning ?? 0);
         setToDoor(!!latest.toDoor);
         const todayStr = new Date().toDateString();
         const total = history
@@ -28,7 +28,7 @@ export default function DasherCompletePage() {
     } catch {}
   }, []);
 
-  const base = toDoor ? 4.75 : 3.50;
+  const base = toDoor ? 0 : 3.50;
   const bonus = toDoor ? 2.00 : 1.25;
 
   return (
