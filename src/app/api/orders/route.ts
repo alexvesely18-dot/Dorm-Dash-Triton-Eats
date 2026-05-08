@@ -35,9 +35,37 @@ export async function GET(req: NextRequest) {
 
 // POST /api/orders  — student places an order
 export async function POST(req: NextRequest) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    console.error("orders POST failed:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    const looksLikeRedis = /UPSTASH|redis|fetch failed|ECONNREFUSED|timeout/i.test(msg);
+    return NextResponse.json(
+      {
+        error: looksLikeRedis
+          ? `Order storage unavailable: ${msg}. Check UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN on the server.`
+          : `Server error: ${msg}`,
+      },
+      { status: 500 },
+    );
+  }
+}
+
+async function handlePost(req: NextRequest) {
   const ip = getIp(req);
   if (!rateLimit(ip, "orders-post", 10, 60_000)) {
     return NextResponse.json({ error: "Too many orders. Please wait." }, { status: 429 });
+  }
+
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return NextResponse.json(
+      {
+        error:
+          "Order storage not configured: UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN missing on the server.",
+      },
+      { status: 500 },
+    );
   }
 
   let body: Record<string, unknown>;

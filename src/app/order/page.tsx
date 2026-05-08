@@ -815,14 +815,28 @@ function OrderPageInner() {
 
     try {
       const res = await fetch("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setApiError(data.error ?? "Failed to place order. Please try again.");
+      const text = await res.text();
+      let data: { id?: string; order?: { hall?: string; total?: number }; error?: string } = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        // Server returned non-JSON (likely Next.js HTML error page) — surface the status
+        setApiError(`Server error ${res.status}: ${text.slice(0, 200) || res.statusText}`);
         setSubmitting(false);
         return;
       }
 
+      if (!res.ok) {
+        setApiError(data.error ?? `Failed to place order (HTTP ${res.status}).`);
+        setSubmitting(false);
+        return;
+      }
+
+      if (!data.id) {
+        setApiError("Server returned no order id. Please try again.");
+        setSubmitting(false);
+        return;
+      }
       localStorage.setItem("dorm_dash_order_id", data.id);
 
       // Persist to student history using the API's authoritative total
@@ -847,7 +861,8 @@ function OrderPageInner() {
 
       router.push("/home");
     } catch (err) {
-      setApiError("Network error — please check your connection and try again.");
+      const msg = err instanceof Error ? err.message : String(err);
+      setApiError(`Network error: ${msg}`);
       setSubmitting(false);
       console.error("Order submission failed:", err);
     }
