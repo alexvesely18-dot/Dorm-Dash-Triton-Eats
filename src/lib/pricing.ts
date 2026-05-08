@@ -96,8 +96,10 @@ export const PRICING = {
   drinkItem:    0.50,
   minTotal:     4.00,
   roomDelivery: 2.00,
-  // Dasher receives this fraction of (deliveryFee + roomFee). Platform keeps the rest.
-  dasherPayoutRatio: 0.5,
+  // Dasher receives this fraction of (deliveryFee + roomFee), with a hard floor below.
+  // Platform keeps the rest. The floor exists because no one will accept a sub-$2 trip.
+  dasherPayoutRatio: 0.75,
+  dasherPayoutFloor: 2.00,
   delivery: {
     close:  { floor: 2.00, rate: 0.25 },
     medium: { floor: 2.00, rate: 0.30 },
@@ -160,11 +162,13 @@ export function calculateOrder(input: OrderInput): OrderBreakdown {
   };
 }
 
-// 50% of the fees the student paid for getting it there. Single source of truth
-// — both the dasher delivery screen and any earnings UI should call this so a
-// future ratio change touches one place.
+// 75% of the fees the student paid for getting it there, with a $2 floor so
+// short/cheap trips remain worth accepting. Single source of truth — both the
+// dasher delivery screen and any earnings UI should call this so a future
+// ratio/floor change touches one place.
 export function dasherEarning(deliveryFee: number, roomFee: number): number {
-  return round2((deliveryFee + roomFee) * PRICING.dasherPayoutRatio);
+  const share = (deliveryFee + roomFee) * PRICING.dasherPayoutRatio;
+  return round2(Math.max(PRICING.dasherPayoutFloor, share));
 }
 
 export function formatUSD(n: number): string {
