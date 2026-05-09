@@ -6,6 +6,7 @@ import {
   CollegeId,
   DINING_HALLS,
   COLLEGES,
+  isBuildingInPilot,
 } from "@/lib/pricing";
 import { rateLimit, getIp } from "@/lib/rateLimit";
 import { sanitizeText } from "@/lib/validate";
@@ -109,7 +110,6 @@ async function handlePost(req: NextRequest) {
 
   // Pilot whitelist — when env var is set, only specific buildings are eligible.
   const buildingName = sanitizeText(String(body.building ?? ""), 100);
-  const { isBuildingInPilot } = await import("@/lib/pricing");
   if (!isBuildingInPilot(buildingName)) {
     return NextResponse.json(
       { error: `${buildingName} is not part of the current pilot. Pilot is limited to selected buildings during the HDH trial.` },

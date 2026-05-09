@@ -33,10 +33,10 @@ export default function LoginPage() {
           ))}
         </div>
 
-        {/* HDH co-branding — replaced with the official lockup once HDH approves the partnership */}
+        {/* HDH-aligned messaging — honest framing until a formal partnership is in place. */}
         <div className="mt-5 flex items-center gap-2 bg-white/10 backdrop-blur border border-white/15 rounded-full px-4 py-1.5 animate-pop-in stagger-4">
           <span className="w-1.5 h-1.5 bg-[#F5B700] rounded-full"/>
-          <span className="text-white/80 text-[11px] font-semibold tracking-wide">In partnership with UCSD HDH · Pilot Program</span>
+          <span className="text-white/80 text-[11px] font-semibold tracking-wide">Built for UCSD Housing-Dining-Hospitality</span>
         </div>
       </div>
 

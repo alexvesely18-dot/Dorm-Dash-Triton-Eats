@@ -444,6 +444,10 @@ function HDHInsights({ orders }: { orders: Order[] }) {
     const res = await fetch(`/api/admin/export-gmv?month=${month}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (!res.ok) {
+      alert("Export failed — please re-authenticate.");
+      return;
+    }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -451,6 +455,21 @@ function HDHInsights({ orders }: { orders: Order[] }) {
     a.download = `hdh-gmv-${month}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const seedDemo = async () => {
+    if (!confirm("Seed ~80 fake delivered orders into the dashboard? Demo orders auto-expire after 24h.")) return;
+    const token = localStorage.getItem("admin_token") ?? "";
+    const res = await fetch("/api/admin/seed-demo", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(`Seed failed: ${data.error ?? res.status}`);
+      return;
+    }
+    alert(`Seeded ${data.written ?? "?"} demo orders (${data.summary?.approxCommission ?? ""} commission). Refresh in a moment.`);
   };
 
   return (
@@ -463,12 +482,21 @@ function HDHInsights({ orders }: { orders: Order[] }) {
             <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">HDH Pilot Report</p>
             <p className="text-white font-black text-lg mt-0.5">All-time delivered orders</p>
           </div>
-          <button
-            onClick={exportCsv}
-            className="bg-[#F5B700] text-[#003087] text-xs font-black px-3 py-2 rounded-lg hover:bg-[#e0a800] transition"
-          >
-            Export CSV
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={seedDemo}
+              className="bg-white/15 text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-white/25 transition"
+              title="Populate the dashboard with realistic demo data"
+            >
+              Seed Demo
+            </button>
+            <button
+              onClick={exportCsv}
+              className="bg-[#F5B700] text-[#003087] text-xs font-black px-3 py-2 rounded-lg hover:bg-[#e0a800] transition"
+            >
+              Export CSV
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-white/8 rounded-xl p-3">

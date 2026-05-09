@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Check, X, ChevronRight, Bell, LogOut, Lock, MapPin, BookOpen, User, ShoppingBag } from "lucide-react";
+import { Pencil, Check, X, ChevronRight, Bell, LogOut, Lock, MapPin, BookOpen, User, ShoppingBag, Heart } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { getCollegeTheme } from "@/lib/campus";
 
@@ -220,7 +220,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* Accessibility */}
-        <Card icon={<Bell size={14}/>} title="Accessibility" theme={theme.accent}>
+        <Card icon={<Heart size={14}/>} title="Accessibility" theme={theme.accent}>
           <ToggleRow
             label="Free delivery (ADA-registered)"
             sub="Verified by OSD on enrollment. Waives delivery + room fees."
