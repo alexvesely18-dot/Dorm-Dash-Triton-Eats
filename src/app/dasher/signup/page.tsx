@@ -28,6 +28,7 @@ export default function DasherSignupPage() {
 
   // Step 3 fields
   const [transport, setTransport] = useState<"bike" | "scooter" | "">("");
+  const [waiverAccepted, setWaiverAccepted] = useState(false);
 
   const next = () => setStep((s) => Math.min(s + 1, 2));
   const back = () => setStep((s) => Math.max(s - 1, 0));
@@ -35,7 +36,7 @@ export default function DasherSignupPage() {
   const canNext = [
     firstName && lastName && email && phone && password.length >= 6 && college,
     pid.length >= 7 && idPhoto,
-    !!transport,
+    !!transport && waiverAccepted,
   ][step];
 
   const onIdPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -218,6 +219,21 @@ export default function DasherSignupPage() {
                 </p>
               </div>
             )}
+
+            {/* Insurance / liability waiver — required to start dashing */}
+            <label className="flex items-start gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 cursor-pointer hover:bg-gray-100 transition">
+              <input
+                type="checkbox"
+                checked={waiverAccepted}
+                onChange={e => setWaiverAccepted(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-[#003087]"
+              />
+              <div className="text-xs text-gray-700 leading-relaxed">
+                I confirm I am personally responsible for my own transportation, follow campus traffic and helmet
+                rules, and have read the <Link href="/privacy" className="text-[#003087] font-semibold underline">privacy notice</Link>.
+                Triton Eats and UCSD HDH do not provide vehicle or medical insurance for dashers.
+              </div>
+            </label>
           </div>
         )}
 

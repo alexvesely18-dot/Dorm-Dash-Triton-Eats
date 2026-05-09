@@ -6,6 +6,7 @@ import {
   CollegeId,
   DINING_HALLS,
   COLLEGES,
+  isBuildingInPilot,
 } from "@/lib/pricing";
 import { rateLimit, getIp } from "@/lib/rateLimit";
 import { sanitizeText } from "@/lib/validate";
@@ -104,7 +105,17 @@ async function handlePost(req: NextRequest) {
     foodItems,
     drinkItems,
     deliverToRoom: Boolean(body.deliverToRoom),
+    adaFreeDelivery: Boolean(body.adaFreeDelivery),
   });
+
+  // Pilot whitelist — when env var is set, only specific buildings are eligible.
+  const buildingName = sanitizeText(String(body.building ?? ""), 100);
+  if (!isBuildingInPilot(buildingName)) {
+    return NextResponse.json(
+      { error: `${buildingName} is not part of the current pilot. Pilot is limited to selected buildings during the HDH trial.` },
+      { status: 400 },
+    );
+  }
 
   if (!breakdown.meetsMinimum) {
     return NextResponse.json(
@@ -129,6 +140,10 @@ async function handlePost(req: NextRequest) {
     order_number:    sanitizeText(String(body.order_number ?? id), 30),
     subtotal:        breakdown.subtotal,
     deliveryFee:     breakdown.deliveryFee,
+    roomFee:         breakdown.roomFee,
+    commission:      breakdown.commission,
+    carbonSavedLbs:  breakdown.carbonSavedLbs,
+    adaFreeDelivery: breakdown.adaFreeDelivery,
     total:           breakdown.total,
     tier:            breakdown.tier,
     building:        sanitizeText(String(body.building      ?? ""), 100),

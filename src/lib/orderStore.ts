@@ -15,6 +15,16 @@ export type Order = {
   total: number;
   subtotal: number;
   deliveryFee: number;
+  roomFee: number;
+  // HDH commission revenue captured at order time so reporting is stable even if rates change.
+  commission?: number;
+  // Lbs of CO2 saved vs. the student driving themselves; used for sustainability counters.
+  carbonSavedLbs?: number;
+  // True if the student was ADA-verified; deliveryFee+roomFee are zero in this case.
+  adaFreeDelivery?: boolean;
+  // Student-facing post-delivery survey.
+  studentRating?: number;
+  studentRatingComment?: string;
   tier: 'close' | 'medium' | 'far';
   building: string;
   deliveryCollege: string;

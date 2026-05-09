@@ -8,7 +8,7 @@ export default function DasherCompletePage() {
   const [stars, setStars] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [submitted, setSubmitted] = useState(false);
-  const [earning, setEarning] = useState(4.75);
+  const [earning, setEarning] = useState(0);
   const [toDoor, setToDoor] = useState(false);
   const [todayTotal, setTodayTotal] = useState(0);
 
@@ -17,7 +17,7 @@ export default function DasherCompletePage() {
       const history = JSON.parse(localStorage.getItem("dasher_history") ?? "[]");
       if (history.length > 0) {
         const latest = history[0];
-        setEarning(latest.earning ?? 4.75);
+        setEarning(latest.earning ?? 0);
         setToDoor(!!latest.toDoor);
         const todayStr = new Date().toDateString();
         const total = history
@@ -28,7 +28,7 @@ export default function DasherCompletePage() {
     } catch {}
   }, []);
 
-  const base = toDoor ? 4.75 : 3.50;
+  const base = toDoor ? 0 : 3.50;
   const bonus = toDoor ? 2.00 : 1.25;
 
   return (
@@ -61,6 +61,15 @@ export default function DasherCompletePage() {
         <div className="mt-4 bg-[#003087]/5 rounded-2xl px-4 py-3 flex items-center justify-between">
           <p className="text-xs text-gray-500 font-semibold">Today&apos;s Total</p>
           <p className="font-black text-[#003087]">${todayTotal.toFixed(2)}</p>
+        </div>
+
+        {/* Sustainability — talking point for the HDH pitch */}
+        <div className="mt-3 bg-green-50 border border-green-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+          <span className="text-xl">🌱</span>
+          <div>
+            <p className="text-xs text-green-700 font-bold">~1.2 lbs CO₂ saved</p>
+            <p className="text-[10px] text-green-600/80">vs. the student driving themselves</p>
+          </div>
         </div>
       </div>
 

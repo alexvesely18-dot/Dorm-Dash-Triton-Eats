@@ -14,6 +14,8 @@ const PATCHABLE_FIELDS = new Set([
   "deliveredAt",
   "rating",
   "dasherRating",
+  "studentRating",
+  "studentRatingComment",
 ]);
 
 const VALID_STATUSES = new Set(["pending", "claimed", "picked_up", "delivered"]);
@@ -79,9 +81,11 @@ export async function PATCH(
     } else if (key === "dasherLat" || key === "dasherLng") {
       const n = Number(body[key]);
       if (Number.isFinite(n)) patch[key] = n;
-    } else if (key === "rating" || key === "dasherRating") {
+    } else if (key === "rating" || key === "dasherRating" || key === "studentRating") {
       const n = Number(body[key]);
       if (Number.isFinite(n) && n >= 1 && n <= 5) patch[key] = Math.round(n);
+    } else if (key === "studentRatingComment") {
+      patch.studentRatingComment = sanitizeText(body[key], 500);
     } else if (key === "claimedAt" || key === "pickedUpAt" || key === "deliveredAt") {
       const s = String(body[key]);
       if (!isNaN(Date.parse(s))) patch[key] = s;

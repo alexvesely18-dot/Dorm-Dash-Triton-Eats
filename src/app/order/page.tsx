@@ -811,6 +811,7 @@ function OrderPageInner() {
       deliverToRoom: toDoor,
       toDoor,
       scheduledFor:  scheduleMode && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
+      adaFreeDelivery: typeof window !== "undefined" && localStorage.getItem("user_ada_free_delivery") === "true",
     };
 
     try {
