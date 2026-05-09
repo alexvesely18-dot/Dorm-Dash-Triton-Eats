@@ -27,7 +27,7 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
-  const [tab, setTab] = useState<"live" | "all" | "map">("live");
+  const [tab, setTab] = useState<"live" | "all" | "map" | "hdh">("live");
   const [tick, setTick] = useState(0);
   const [assigning, setAssigning] = useState<string | null>(null);
   const [assignName, setAssignName] = useState("");
@@ -167,21 +167,24 @@ export default function AdminDashboard() {
         )}
 
         {/* Tabs */}
-        <div className="flex bg-white/5 border border-white/8 rounded-2xl p-1 gap-1">
+        <div className="flex bg-white/5 border border-white/8 rounded-2xl p-1 gap-1 overflow-x-auto">
           {([
             { id: "live", label: `Live (${live.length})` },
-            { id: "all",  label: `All Orders (${all.length})` },
-            { id: "map",  label: "Map View" },
+            { id: "all",  label: `All (${all.length})` },
+            { id: "map",  label: "Map" },
+            { id: "hdh",  label: "HDH Insights" },
           ] as const).map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 py-2 rounded-xl text-sm font-bold transition ${tab === t.id ? "bg-white/10 text-white" : "text-white/40 hover:text-white/60"}`}
+              className={`flex-1 py-2 rounded-xl text-sm font-bold transition whitespace-nowrap ${tab === t.id ? "bg-white/10 text-white" : "text-white/40 hover:text-white/60"}`}
             >
               {t.label}
             </button>
           ))}
         </div>
+
+        {tab === "hdh" && <HDHInsights orders={orders} />}
 
         {/* Map view */}
         {tab === "map" && (
@@ -217,7 +220,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Orders list */}
-        {tab !== "map" && (
+        {tab !== "map" && tab !== "hdh" && (
           <div className="flex flex-col gap-2">
             {displayed.length === 0 && (
               <div className="text-center py-16 text-white/20">
@@ -402,6 +405,148 @@ export default function AdminDashboard() {
 
       {/* Invisible tick to force elapsed time re-renders */}
       <span className="hidden">{tick}</span>
+    </div>
+  );
+}
+
+function HDHInsights({ orders }: { orders: Order[] }) {
+  const delivered = orders.filter(o => o.status === "delivered");
+  const gmv         = delivered.reduce((s, o) => s + (o.subtotal ?? 0), 0);
+  const commission  = delivered.reduce((s, o) => s + (o.commission ?? 0), 0);
+  const carbonSaved = delivered.reduce((s, o) => s + (o.carbonSavedLbs ?? 0), 0);
+  const aov         = delivered.length > 0 ? gmv / delivered.length : 0;
+  const adaCount    = delivered.filter(o => o.adaFreeDelivery).length;
+
+  // Hall breakdown
+  const byHall: Record<string, { count: number; gmv: number; commission: number }> = {};
+  for (const o of delivered) {
+    if (!byHall[o.hall]) byHall[o.hall] = { count: 0, gmv: 0, commission: 0 };
+    byHall[o.hall].count++;
+    byHall[o.hall].gmv += o.subtotal ?? 0;
+    byHall[o.hall].commission += o.commission ?? 0;
+  }
+  const halls = Object.entries(byHall).sort((a, b) => b[1].gmv - a[1].gmv);
+
+  // Hour heatmap (24 buckets)
+  const byHour = Array.from({ length: 24 }, () => 0);
+  for (const o of delivered) {
+    byHour[new Date(o.createdAt).getHours()]++;
+  }
+  const peakCount = Math.max(1, ...byHour);
+
+  // Average student rating
+  const ratings = delivered.map(o => o.studentRating).filter((r): r is number => typeof r === "number");
+  const avgRating = ratings.length > 0 ? ratings.reduce((s, r) => s + r, 0) / ratings.length : null;
+
+  const exportCsv = async () => {
+    const token = localStorage.getItem("admin_token") ?? "";
+    const month = new Date().toISOString().slice(0, 7);
+    const res = await fetch(`/api/admin/export-gmv?month=${month}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `hdh-gmv-${month}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+
+      {/* HDH summary card */}
+      <div className="bg-gradient-to-br from-[#003087] to-[#001e5a] border border-white/10 rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">HDH Pilot Report</p>
+            <p className="text-white font-black text-lg mt-0.5">All-time delivered orders</p>
+          </div>
+          <button
+            onClick={exportCsv}
+            className="bg-[#F5B700] text-[#003087] text-xs font-black px-3 py-2 rounded-lg hover:bg-[#e0a800] transition"
+          >
+            Export CSV
+          </button>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-white/8 rounded-xl p-3">
+            <p className="text-white/50 text-[10px] font-bold uppercase tracking-wide">GMV (food sold)</p>
+            <p className="text-white text-2xl font-black mt-1">${gmv.toFixed(0)}</p>
+          </div>
+          <div className="bg-white/8 rounded-xl p-3">
+            <p className="text-white/50 text-[10px] font-bold uppercase tracking-wide">HDH Commission</p>
+            <p className="text-[#F5B700] text-2xl font-black mt-1">${commission.toFixed(2)}</p>
+          </div>
+          <div className="bg-white/8 rounded-xl p-3">
+            <p className="text-white/50 text-[10px] font-bold uppercase tracking-wide">Avg Order Value</p>
+            <p className="text-white text-2xl font-black mt-1">${aov.toFixed(2)}</p>
+          </div>
+          <div className="bg-white/8 rounded-xl p-3">
+            <p className="text-white/50 text-[10px] font-bold uppercase tracking-wide">CO₂ Saved</p>
+            <p className="text-green-400 text-2xl font-black mt-1">{carbonSaved.toFixed(0)} lb</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Per-hall breakdown */}
+      <div className="bg-white/5 border border-white/8 rounded-2xl p-5">
+        <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-3">By Dining Hall</p>
+        {halls.length === 0 ? (
+          <p className="text-white/30 text-sm">No delivered orders yet.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {halls.map(([name, h]) => (
+              <div key={name} className="flex items-center justify-between bg-white/4 rounded-xl px-3 py-2.5">
+                <div>
+                  <p className="text-white font-bold text-sm">{name}</p>
+                  <p className="text-white/40 text-xs">{h.count} orders · ${(h.gmv / Math.max(1, h.count)).toFixed(2)} avg</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-white font-black">${h.gmv.toFixed(0)}</p>
+                  <p className="text-[#F5B700] text-xs font-semibold">+${h.commission.toFixed(2)} HDH</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Hour-of-day demand */}
+      <div className="bg-white/5 border border-white/8 rounded-2xl p-5">
+        <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-3">Demand by Hour</p>
+        <div className="flex items-end gap-1 h-24">
+          {byHour.map((count, h) => (
+            <div key={h} className="flex-1 flex flex-col items-center gap-1">
+              <div
+                className="w-full rounded-t bg-[#F5B700]/70"
+                style={{ height: `${(count / peakCount) * 100}%`, minHeight: count > 0 ? 2 : 0 }}
+                title={`${h}:00 — ${count} orders`}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-between text-white/30 text-[9px] mt-1 font-mono">
+          <span>0</span><span>6</span><span>12</span><span>18</span><span>23</span>
+        </div>
+      </div>
+
+      {/* Welfare + quality metrics */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-white/5 border border-white/8 rounded-2xl p-4">
+          <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">ADA Deliveries</p>
+          <p className="text-white text-xl font-black mt-1">{adaCount}</p>
+          <p className="text-white/40 text-xs mt-0.5">Free for ADA-registered students</p>
+        </div>
+        <div className="bg-white/5 border border-white/8 rounded-2xl p-4">
+          <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Avg Student Rating</p>
+          <p className="text-white text-xl font-black mt-1">
+            {avgRating != null ? `${avgRating.toFixed(2)} ★` : "—"}
+          </p>
+          <p className="text-white/40 text-xs mt-0.5">{ratings.length} ratings collected</p>
+        </div>
+      </div>
     </div>
   );
 }

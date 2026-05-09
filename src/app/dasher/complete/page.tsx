@@ -62,6 +62,15 @@ export default function DasherCompletePage() {
           <p className="text-xs text-gray-500 font-semibold">Today&apos;s Total</p>
           <p className="font-black text-[#003087]">${todayTotal.toFixed(2)}</p>
         </div>
+
+        {/* Sustainability — talking point for the HDH pitch */}
+        <div className="mt-3 bg-green-50 border border-green-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+          <span className="text-xl">🌱</span>
+          <div>
+            <p className="text-xs text-green-700 font-bold">~1.2 lbs CO₂ saved</p>
+            <p className="text-[10px] text-green-600/80">vs. the student driving themselves</p>
+          </div>
+        </div>
       </div>
 
       {!submitted ? (

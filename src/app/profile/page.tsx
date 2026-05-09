@@ -33,6 +33,7 @@ export default function ProfilePage() {
   const college    = useEditable("");
   const [notifOrders, setNotifOrders]  = useState(true);
   const [notifPromos, setNotifPromos]  = useState(false);
+  const [adaFreeDelivery, setAdaFreeDelivery] = useState(false);
   const [showPwModal, setShowPwModal]  = useState(false);
   const [orderCount, setOrderCount] = useState(0);
   const [totalSpent, setTotalSpent] = useState(0);
@@ -53,6 +54,7 @@ export default function ProfilePage() {
     phone.set(localStorage.getItem("user_phone") ?? "");
     username.set(localStorage.getItem("user_username") ?? "");
     room.set(localStorage.getItem("user_room") ?? "");
+    setAdaFreeDelivery(localStorage.getItem("user_ada_free_delivery") === "true");
 
     try {
       const history = JSON.parse(localStorage.getItem("student_history") ?? "[]");
@@ -215,6 +217,17 @@ export default function ProfilePage() {
         <Card icon={<Bell size={14}/>} title="Notifications" theme={theme.accent}>
           <ToggleRow label="Order updates" sub="Delivery status & confirmations" value={notifOrders} onChange={setNotifOrders} accent={theme.accent} />
           <ToggleRow label="Promotions"    sub="Deals and dining hall specials"  value={notifPromos} onChange={setNotifPromos} accent={theme.accent} />
+        </Card>
+
+        {/* Accessibility */}
+        <Card icon={<Bell size={14}/>} title="Accessibility" theme={theme.accent}>
+          <ToggleRow
+            label="Free delivery (ADA-registered)"
+            sub="Verified by OSD on enrollment. Waives delivery + room fees."
+            value={adaFreeDelivery}
+            onChange={(v) => { setAdaFreeDelivery(v); localStorage.setItem("user_ada_free_delivery", String(v)); }}
+            accent={theme.accent}
+          />
         </Card>
 
         <button

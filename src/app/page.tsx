@@ -32,6 +32,12 @@ export default function LoginPage() {
             <span key={t} className={`bg-white/15 backdrop-blur text-white/90 text-xs font-medium px-3 py-1.5 rounded-full border border-white/10 animate-pop-in stagger-${i+2}`}>{t}</span>
           ))}
         </div>
+
+        {/* HDH co-branding — replaced with the official lockup once HDH approves the partnership */}
+        <div className="mt-5 flex items-center gap-2 bg-white/10 backdrop-blur border border-white/15 rounded-full px-4 py-1.5 animate-pop-in stagger-4">
+          <span className="w-1.5 h-1.5 bg-[#F5B700] rounded-full"/>
+          <span className="text-white/80 text-[11px] font-semibold tracking-wide">In partnership with UCSD HDH · Pilot Program</span>
+        </div>
       </div>
 
       <div className="relative bg-[#F8FAFC] rounded-t-[2rem] px-6 pt-6 pb-10 shadow-2xl animate-slide-up stagger-2">

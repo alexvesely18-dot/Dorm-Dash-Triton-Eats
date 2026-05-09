@@ -100,12 +100,28 @@ export const PRICING = {
   // Platform keeps the rest. The floor exists because no one will accept a sub-$2 trip.
   dasherPayoutRatio: 0.75,
   dasherPayoutFloor: 2.00,
+  // Commission paid by HDH to the platform on the food subtotal of every delivered order.
+  // Per-hall override allows different rates as we negotiate (see HALL_COMMISSION).
+  hdhCommissionDefault: 0.10,
+  // Estimated CO2 saved per delivery vs. the student driving themselves to the dining
+  // hall in a 25 mpg ICE car. ~1.5 mi round trip @ 19.6 lb CO2/gal of gasoline.
+  carbonSavedLbsPerOrder: 1.18,
   delivery: {
     close:  { floor: 2.00, rate: 0.25 },
     medium: { floor: 2.00, rate: 0.30 },
     far:    { floor: 2.00, rate: 0.35 },
   },
 } as const;
+
+// Per-hall commission overrides. Defaults to PRICING.hdhCommissionDefault when omitted.
+// HDH may want different rates for high-margin halls vs. low-margin ones.
+export const HALL_COMMISSION: Partial<Record<HallId, number>> = {
+  // Example: pines: 0.12, sixthDining: 0.08
+};
+
+export function getCommissionRate(hall: HallId): number {
+  return HALL_COMMISSION[hall] ?? PRICING.hdhCommissionDefault;
+}
 
 export function getDistanceTier(
   hall: HallId,
@@ -131,6 +147,9 @@ export interface OrderInput {
   foodItems: number;
   drinkItems: number;
   deliverToRoom: boolean;
+  // ADA-registered students pay no delivery or room fee. Verified server-side via SSO claim
+  // in production; for now the client passes the flag from the user's profile.
+  adaFreeDelivery?: boolean;
 }
 
 export interface OrderBreakdown {
@@ -143,6 +162,9 @@ export interface OrderBreakdown {
   total: number;
   meetsMinimum: boolean;
   minimumShortfall: number;
+  commission: number;
+  carbonSavedLbs: number;
+  adaFreeDelivery: boolean;
 }
 
 export function calculateOrder(input: OrderInput): OrderBreakdown {
@@ -150,16 +172,34 @@ export function calculateOrder(input: OrderInput): OrderBreakdown {
   const foodFee     = round2(input.foodItems * PRICING.foodItem);
   const drinkFee    = round2(input.drinkItems * PRICING.drinkItem);
   const subtotal    = round2(foodFee + drinkFee);
-  const deliveryFee = getDeliveryFee(tier, subtotal);
-  const roomFee     = input.deliverToRoom ? PRICING.roomDelivery : 0;
+  const adaFree     = !!input.adaFreeDelivery;
+  const deliveryFee = adaFree ? 0 : getDeliveryFee(tier, subtotal);
+  const roomFee     = adaFree ? 0 : (input.deliverToRoom ? PRICING.roomDelivery : 0);
   const total       = round2(subtotal + deliveryFee + roomFee);
   const meetsMinimum     = total >= PRICING.minTotal;
   const minimumShortfall = round2(Math.max(0, PRICING.minTotal - total));
+  const commission       = round2(subtotal * getCommissionRate(input.hall));
   return {
     tier, foodFee, drinkFee, subtotal,
     deliveryFee, roomFee, total,
     meetsMinimum, minimumShortfall,
+    commission,
+    carbonSavedLbs: PRICING.carbonSavedLbsPerOrder,
+    adaFreeDelivery: adaFree,
   };
+}
+
+// Pilot mode — when set, only orders to whitelisted buildings are accepted.
+// Set NEXT_PUBLIC_PILOT_BUILDINGS to a comma-separated list (e.g. "Catalyst Hall,Mosaic Hall")
+// to limit the live deployment to a small test cohort during the HDH pilot.
+export function getPilotBuildings(): string[] {
+  const raw = process.env.NEXT_PUBLIC_PILOT_BUILDINGS ?? "";
+  return raw.split(",").map(s => s.trim()).filter(Boolean);
+}
+
+export function isBuildingInPilot(building: string): boolean {
+  const pilot = getPilotBuildings();
+  return pilot.length === 0 || pilot.includes(building);
 }
 
 // 75% of the fees the student paid for getting it there, with a $2 floor so
