@@ -60,7 +60,9 @@ export async function POST(req: NextRequest) {
     const deliveryCollege = BUILDING_COLLEGE[building] ?? "";
     const coords = BUILDING_COORDS[building] ?? { lat: 32.88, lng: -117.234 };
 
-    // Items: 1-3 food, 0-2 drink
+    // Items: 1-3 food, 0-2 drink — selected just to populate the cart for the dasher.
+    // Their stored prices are used here only to compute a realistic receipt total for
+    // the seed; the live app never displays food prices.
     const foodItems = 1 + Math.floor(Math.random() * 3);
     const drinkItems = Math.floor(Math.random() * 3);
     const cart = [
@@ -68,16 +70,16 @@ export async function POST(req: NextRequest) {
       ...pickN(SAMPLE_ITEMS.filter(i => i.type === "drink"), drinkItems),
     ];
     const cartStrings = cart.map(c => `1× ${c.name}`);
+    const receiptTotal = Math.round(cart.reduce((s, c) => s + c.price, 0) * 100) / 100;
 
     const toDoor = Math.random() < 0.45;
     const adaFree = Math.random() < 0.06;
     const breakdown = calculateOrder({
       hall: hallId,
       college: collegeId,
-      foodItems,
-      drinkItems,
       deliverToRoom: toDoor,
       adaFreeDelivery: adaFree,
+      receiptTotal,
     });
 
     // Spread over the past 14 days, weighted toward recent
@@ -105,9 +107,9 @@ export async function POST(req: NextRequest) {
       pid_last4: String(Math.floor(1000 + Math.random() * 9000)),
       pickup_time: null,
       order_number: String(120000000 + Math.floor(Math.random() * 9999999)),
-      subtotal:        breakdown.subtotal,
       deliveryFee:     breakdown.deliveryFee,
       roomFee:         breakdown.roomFee,
+      receiptTotal:    breakdown.receiptTotal,
       commission:      breakdown.commission,
       carbonSavedLbs:  breakdown.carbonSavedLbs,
       adaFreeDelivery: breakdown.adaFreeDelivery,

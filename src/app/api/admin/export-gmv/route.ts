@@ -27,13 +27,13 @@ export async function GET(req: NextRequest) {
   });
 
   const header = [
-    "Date", "OrderID", "Hall", "Subtotal", "DeliveryFee", "RoomFee", "Total", "Commission", "Building", "ADA",
+    "Date", "OrderID", "Hall", "Triton2GoReceiptTotal", "DeliveryFee", "RoomFee", "PlatformCharge", "HDHCommission", "Building", "ADA",
   ].join(",");
   const rows = filtered.map(o => [
     new Date(o.createdAt).toISOString(),
     o.id,
     `"${o.hall.replace(/"/g, '""')}"`,
-    o.subtotal.toFixed(2),
+    (o.receiptTotal ?? 0).toFixed(2),
     o.deliveryFee.toFixed(2),
     (o.roomFee ?? 0).toFixed(2),
     o.total.toFixed(2),

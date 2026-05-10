@@ -144,7 +144,10 @@ export default function OrdersPage() {
                         <p className="font-bold text-gray-900">{activeOrder.hall}</p>
                         <p className="text-xs text-gray-400">{activeOrder.hallCollege} · {activeOrder.id}</p>
                       </div>
-                      <p className="font-black" style={{ color: theme.accent }}>${Number(activeOrder.total).toFixed(2)}</p>
+                      <div className="text-right">
+                        <p className="font-black" style={{ color: theme.accent }}>${Number(activeOrder.total).toFixed(2)}</p>
+                        <p className="text-[10px] text-gray-400 font-semibold">delivery</p>
+                      </div>
                     </div>
 
                     {activeOrder.dasherName && (

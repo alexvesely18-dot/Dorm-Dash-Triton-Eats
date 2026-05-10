@@ -264,8 +264,9 @@ export default function AdminDashboard() {
                       {/* Two-col info grid */}
                       <div className="grid grid-cols-2 gap-2">
                         {[
-                          { label: "Order #",       value: order.order_number },
-                          { label: "Total",         value: `$${Number(order.total).toFixed(2)}` },
+                          { label: "Order #",         value: order.order_number },
+                          { label: "Delivery charge", value: `$${Number(order.total).toFixed(2)}` },
+                          { label: "Triton2Go receipt", value: order.receiptTotal != null ? `$${Number(order.receiptTotal).toFixed(2)}` : "—" },
                           { label: "Dining Hall",   value: order.hall },
                           { label: "College",       value: order.hallCollege },
                           { label: "Deliver to",    value: order.building },
@@ -411,21 +412,24 @@ export default function AdminDashboard() {
 
 function HDHInsights({ orders }: { orders: Order[] }) {
   const delivered = orders.filter(o => o.status === "delivered");
-  const gmv         = delivered.reduce((s, o) => s + (o.subtotal ?? 0), 0);
-  const commission  = delivered.reduce((s, o) => s + (o.commission ?? 0), 0);
-  const carbonSaved = delivered.reduce((s, o) => s + (o.carbonSavedLbs ?? 0), 0);
-  const aov         = delivered.length > 0 ? gmv / delivered.length : 0;
-  const adaCount    = delivered.filter(o => o.adaFreeDelivery).length;
+  // Triton2Go GMV is captured from receipt OCR; orders where OCR fails contribute 0
+  // to the GMV metric but still count toward platform-side stats.
+  const gmv             = delivered.reduce((s, o) => s + (o.receiptTotal ?? 0), 0);
+  const platformRevenue = delivered.reduce((s, o) => s + (o.total ?? 0), 0);
+  const commission      = delivered.reduce((s, o) => s + (o.commission ?? 0), 0);
+  const carbonSaved     = delivered.reduce((s, o) => s + (o.carbonSavedLbs ?? 0), 0);
+  const aov             = delivered.length > 0 ? platformRevenue / delivered.length : 0;
+  const adaCount        = delivered.filter(o => o.adaFreeDelivery).length;
 
   // Hall breakdown
   const byHall: Record<string, { count: number; gmv: number; commission: number }> = {};
   for (const o of delivered) {
     if (!byHall[o.hall]) byHall[o.hall] = { count: 0, gmv: 0, commission: 0 };
     byHall[o.hall].count++;
-    byHall[o.hall].gmv += o.subtotal ?? 0;
+    byHall[o.hall].gmv += o.receiptTotal ?? 0;
     byHall[o.hall].commission += o.commission ?? 0;
   }
-  const halls = Object.entries(byHall).sort((a, b) => b[1].gmv - a[1].gmv);
+  const halls = Object.entries(byHall).sort((a, b) => b[1].count - a[1].count);
 
   // Hour heatmap (24 buckets)
   const byHour = Array.from({ length: 24 }, () => 0);
@@ -500,16 +504,18 @@ function HDHInsights({ orders }: { orders: Order[] }) {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-white/8 rounded-xl p-3">
-            <p className="text-white/50 text-[10px] font-bold uppercase tracking-wide">GMV (food sold)</p>
+            <p className="text-white/50 text-[10px] font-bold uppercase tracking-wide">Triton2Go GMV captured</p>
             <p className="text-white text-2xl font-black mt-1">${gmv.toFixed(0)}</p>
+            <p className="text-white/35 text-[9px] mt-1">From receipt OCR</p>
           </div>
           <div className="bg-white/8 rounded-xl p-3">
-            <p className="text-white/50 text-[10px] font-bold uppercase tracking-wide">HDH Commission</p>
+            <p className="text-white/50 text-[10px] font-bold uppercase tracking-wide">HDH Commission to platform</p>
             <p className="text-[#F5B700] text-2xl font-black mt-1">${commission.toFixed(2)}</p>
           </div>
           <div className="bg-white/8 rounded-xl p-3">
-            <p className="text-white/50 text-[10px] font-bold uppercase tracking-wide">Avg Order Value</p>
-            <p className="text-white text-2xl font-black mt-1">${aov.toFixed(2)}</p>
+            <p className="text-white/50 text-[10px] font-bold uppercase tracking-wide">Platform delivery revenue</p>
+            <p className="text-white text-2xl font-black mt-1">${platformRevenue.toFixed(0)}</p>
+            <p className="text-white/35 text-[9px] mt-1">Avg ${aov.toFixed(2)}/order</p>
           </div>
           <div className="bg-white/8 rounded-xl p-3">
             <p className="text-white/50 text-[10px] font-bold uppercase tracking-wide">CO₂ Saved</p>
@@ -529,10 +535,10 @@ function HDHInsights({ orders }: { orders: Order[] }) {
               <div key={name} className="flex items-center justify-between bg-white/4 rounded-xl px-3 py-2.5">
                 <div>
                   <p className="text-white font-bold text-sm">{name}</p>
-                  <p className="text-white/40 text-xs">{h.count} orders · ${(h.gmv / Math.max(1, h.count)).toFixed(2)} avg</p>
+                  <p className="text-white/40 text-xs">{h.count} delivery{h.count !== 1 ? "ies" : ""}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-white font-black">${h.gmv.toFixed(0)}</p>
+                  <p className="text-white font-black">${h.gmv.toFixed(0)} <span className="text-white/40 text-[10px] font-semibold">GMV</span></p>
                   <p className="text-[#F5B700] text-xs font-semibold">+${h.commission.toFixed(2)} HDH</p>
                 </div>
               </div>

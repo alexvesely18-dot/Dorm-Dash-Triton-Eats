@@ -219,15 +219,34 @@ export default function ProfilePage() {
           <ToggleRow label="Promotions"    sub="Deals and dining hall specials"  value={notifPromos} onChange={setNotifPromos} accent={theme.accent} />
         </Card>
 
-        {/* Accessibility */}
+        {/* Accessibility — read-only status. Free delivery is granted by UCSD OSD, not self-serve. */}
         <Card icon={<Heart size={14}/>} title="Accessibility" theme={theme.accent}>
-          <ToggleRow
-            label="Free delivery (ADA-registered)"
-            sub="Verified by OSD on enrollment. Waives delivery + room fees."
-            value={adaFreeDelivery}
-            onChange={(v) => { setAdaFreeDelivery(v); localStorage.setItem("user_ada_free_delivery", String(v)); }}
-            accent={theme.accent}
-          />
+          <div className="flex items-start justify-between gap-3 py-2">
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-800">Free delivery (ADA)</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Requires pre-approval from UCSD&apos;s Office for Students with Disabilities (OSD).
+                Approved students have delivery and room fees waived automatically.
+              </p>
+            </div>
+            <span
+              className={`text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-full flex-shrink-0 ${
+                adaFreeDelivery
+                  ? "bg-green-100 text-green-700 border border-green-200"
+                  : "bg-gray-100 text-gray-500 border border-gray-200"
+              }`}
+            >
+              {adaFreeDelivery ? "Approved" : "Not enrolled"}
+            </span>
+          </div>
+          {!adaFreeDelivery && (
+            <a
+              href="mailto:osd@ucsd.edu?subject=Triton%20Eats%20delivery%20accommodation%20request"
+              className="block w-full text-center text-xs font-bold text-[#003087] bg-[#003087]/5 hover:bg-[#003087]/10 transition rounded-xl px-3 py-2 mt-1"
+            >
+              Request access through OSD →
+            </a>
+          )}
         </Card>
 
         <button

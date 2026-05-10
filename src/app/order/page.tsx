@@ -48,7 +48,9 @@ const HALLS = [
   { id: "bistro",   name: "The Bistro",    college: "Seventh/Eighth", emoji: "🥪", lat: 32.8850, lng: -117.2402, bg: "bg-indigo-50",  border: "border-indigo-200" },
 ];
 
-const MENUS: Record<string, { category: string; items: { name: string; price: number }[] }[]> = {
+// Menus list items so the dasher knows what to grab; food prices live in Triton2Go,
+// not in this app — the platform charges only delivery + room fees.
+const MENUS: Record<string, { category: string; items: { name: string; price?: number }[] }[]> = {
   "64deg": [
     { category: "🍔 Triton Grill", items: [
       { name: "Black Bean Burger Combo", price: 11.50 },
@@ -707,7 +709,6 @@ function OrderPageInner() {
   }, [searchParams]);
 
   const menu = MENUS[hall] ?? [];
-  const allItems = menu.flatMap((g) => g.items);
 
   const add = (name: string) =>
     setCart((c) => ({ ...c, [name]: (c[name] ?? 0) + 1 }));
@@ -719,10 +720,6 @@ function OrderPageInner() {
     });
 
   const cartCount = Object.values(cart).reduce((s, q) => s + q, 0);
-  const cartTotal = Object.entries(cart).reduce((sum, [name, qty]) => {
-    const price = allItems.find((i) => i.name === name)?.price ?? 0;
-    return sum + price * qty;
-  }, 0);
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -812,6 +809,9 @@ function OrderPageInner() {
       toDoor,
       scheduledFor:  scheduleMode && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
       adaFreeDelivery: typeof window !== "undefined" && localStorage.getItem("user_ada_free_delivery") === "true",
+      // OCR'd Triton2Go receipt total — server stores it for HDH commission reporting only,
+      // never displayed in the app.
+      receiptTotal: extracted?.total ?? null,
     };
 
     try {
@@ -961,7 +961,7 @@ function OrderPageInner() {
             {cartCount > 0 && (
               <div className="bg-[#003087]/5 border border-[#003087]/20 rounded-2xl px-4 py-3 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-bold text-[#003087]">{cartCount} item{cartCount > 1 ? "s" : ""} · ${cartTotal.toFixed(2)}</p>
+                  <p className="text-sm font-bold text-[#003087]">{cartCount} item{cartCount > 1 ? "s" : ""}</p>
                   <p className="text-xs text-gray-400">Tap to review your cart</p>
                 </div>
                 <button onClick={() => setStep("items")} className="text-xs font-bold text-white bg-[#003087] px-3 py-2 rounded-xl flex items-center gap-1 press">
@@ -1015,7 +1015,6 @@ function OrderPageInner() {
                     <div key={item.name} className="flex items-center justify-between px-4 py-3">
                       <div>
                         <p className="text-sm font-semibold text-gray-800">{item.name}</p>
-                        <p className="text-xs text-gray-400">${item.price.toFixed(2)}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         {qty > 0 ? (
@@ -1046,24 +1045,19 @@ function OrderPageInner() {
               </button>
             </div>
 
-            {/* Cart summary */}
+            {/* Cart summary — item list only, no prices. You pay Triton2Go for the food. */}
             {cartCount > 0 && (
               <div className="bg-[#003087]/5 rounded-2xl p-4 border border-[#003087]/10 animate-scale-in">
                 <p className="text-xs font-bold text-[#003087] uppercase tracking-wide mb-2">Your Cart</p>
                 <div className="flex flex-col gap-1">
-                  {Object.entries(cart).map(([name, qty]) => {
-                    const price = allItems.find(i => i.name === name)?.price ?? 0;
-                    return (
-                      <div key={name} className="flex justify-between text-sm">
-                        <span className="text-gray-600">{qty}× {name}</span>
-                        <span className="font-semibold text-gray-800">${(price * qty).toFixed(2)}</span>
-                      </div>
-                    );
-                  })}
+                  {Object.entries(cart).map(([name, qty]) => (
+                    <div key={name} className="text-sm text-gray-700">
+                      {qty}× {name}
+                    </div>
+                  ))}
                 </div>
-                <div className="border-t border-[#003087]/15 mt-2 pt-2 flex justify-between text-sm font-black text-[#003087]">
-                  <span>Subtotal</span>
-                  <span>${cartTotal.toFixed(2)}</span>
+                <div className="border-t border-[#003087]/15 mt-2 pt-2 text-[11px] text-[#003087]/70 italic">
+                  Food is paid through Triton2Go. We only charge for delivery.
                 </div>
               </div>
             )}
@@ -1308,7 +1302,7 @@ function OrderPageInner() {
               onClick={() => setStep("items")}
               className="w-full flex items-center justify-center gap-2 font-bold py-4 rounded-2xl shadow-lg bg-[#003087] text-white hover:bg-[#002060] transition press"
             >
-              View cart ({cartCount} item{cartCount > 1 ? "s" : ""}) · ${cartTotal.toFixed(2)} <ChevronRight size={18}/>
+              View cart ({cartCount} item{cartCount > 1 ? "s" : ""}) <ChevronRight size={18}/>
             </button>
           </div>
         </div>
