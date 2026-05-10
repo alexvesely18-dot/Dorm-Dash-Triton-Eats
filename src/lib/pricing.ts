@@ -92,24 +92,26 @@ export const DISTANCE_TIERS: Record<
 };
 
 export const PRICING = {
-  foodItem:     2.00,
-  drinkItem:    0.50,
-  minTotal:     4.00,
+  // Food is paid to HDH via Triton2Go — the platform never charges for food and does not
+  // display item prices anywhere in the UI. Only delivery + room fees are platform revenue.
   roomDelivery: 2.00,
   // Dasher receives this fraction of (deliveryFee + roomFee), with a hard floor below.
   // Platform keeps the rest. The floor exists because no one will accept a sub-$2 trip.
   dasherPayoutRatio: 0.75,
   dasherPayoutFloor: 2.00,
-  // Commission paid by HDH to the platform on the food subtotal of every delivered order.
-  // Per-hall override allows different rates as we negotiate (see HALL_COMMISSION).
+  // Commission paid by HDH to the platform on the Triton2Go food subtotal we capture
+  // from the receipt OCR. When we can't read the receipt, commission for that order is 0.
+  // Per-hall override via HALL_COMMISSION.
   hdhCommissionDefault: 0.10,
   // Estimated CO2 saved per delivery vs. the student driving themselves to the dining
   // hall in a 25 mpg ICE car. ~1.5 mi round trip @ 19.6 lb CO2/gal of gasoline.
   carbonSavedLbsPerOrder: 1.18,
+  // Flat delivery fee per distance tier. Doesn't scale with food cost because the
+  // platform doesn't see or care about food cost.
   delivery: {
-    close:  { floor: 2.00, rate: 0.25 },
-    medium: { floor: 2.00, rate: 0.30 },
-    far:    { floor: 2.00, rate: 0.35 },
+    close:  2.00,
+    medium: 2.50,
+    far:    3.00,
   },
 } as const;
 
@@ -133,59 +135,50 @@ export function getDistanceTier(
   return 'far';
 }
 
-export function getDeliveryFee(
-  tier: DistanceTier,
-  subtotal: number
-): number {
-  const t = PRICING.delivery[tier];
-  return round2(Math.max(t.floor, subtotal * t.rate));
+export function getDeliveryFee(tier: DistanceTier): number {
+  return PRICING.delivery[tier];
 }
 
 export interface OrderInput {
   hall: HallId;
   college: CollegeId;
-  foodItems: number;
-  drinkItems: number;
   deliverToRoom: boolean;
   // ADA-registered students pay no delivery or room fee. Verified server-side via SSO claim
   // in production; for now the client passes the flag from the user's profile.
   adaFreeDelivery?: boolean;
+  // OCR-captured Triton2Go receipt total, used for HDH commission reporting only.
+  // Never displayed in the user-facing app. When unknown, commission is 0.
+  receiptTotal?: number;
 }
 
 export interface OrderBreakdown {
   tier: DistanceTier;
-  foodFee: number;
-  drinkFee: number;
-  subtotal: number;
   deliveryFee: number;
   roomFee: number;
   total: number;
-  meetsMinimum: boolean;
-  minimumShortfall: number;
   commission: number;
   carbonSavedLbs: number;
   adaFreeDelivery: boolean;
+  receiptTotal: number;
 }
 
 export function calculateOrder(input: OrderInput): OrderBreakdown {
-  const tier        = getDistanceTier(input.hall, input.college);
-  const foodFee     = round2(input.foodItems * PRICING.foodItem);
-  const drinkFee    = round2(input.drinkItems * PRICING.drinkItem);
-  const subtotal    = round2(foodFee + drinkFee);
-  const adaFree     = !!input.adaFreeDelivery;
-  const deliveryFee = adaFree ? 0 : getDeliveryFee(tier, subtotal);
-  const roomFee     = adaFree ? 0 : (input.deliverToRoom ? PRICING.roomDelivery : 0);
-  const total       = round2(subtotal + deliveryFee + roomFee);
-  const meetsMinimum     = total >= PRICING.minTotal;
-  const minimumShortfall = round2(Math.max(0, PRICING.minTotal - total));
-  const commission       = round2(subtotal * getCommissionRate(input.hall));
+  const tier         = getDistanceTier(input.hall, input.college);
+  const adaFree      = !!input.adaFreeDelivery;
+  const deliveryFee  = adaFree ? 0 : getDeliveryFee(tier);
+  const roomFee      = adaFree ? 0 : (input.deliverToRoom ? PRICING.roomDelivery : 0);
+  const total        = round2(deliveryFee + roomFee);
+  const receiptTotal = Number.isFinite(input.receiptTotal) && (input.receiptTotal ?? 0) > 0
+    ? round2(input.receiptTotal as number)
+    : 0;
+  const commission   = round2(receiptTotal * getCommissionRate(input.hall));
   return {
-    tier, foodFee, drinkFee, subtotal,
+    tier,
     deliveryFee, roomFee, total,
-    meetsMinimum, minimumShortfall,
     commission,
     carbonSavedLbs: PRICING.carbonSavedLbsPerOrder,
     adaFreeDelivery: adaFree,
+    receiptTotal,
   };
 }
 

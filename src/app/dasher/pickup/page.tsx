@@ -193,8 +193,8 @@ export default function DasherPickupPage() {
             ))}
           </div>
           <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-xs text-gray-400 font-semibold">Order Total</p>
-            <p className="font-black text-gray-900">${Number(order.total).toFixed(2)}</p>
+            <p className="text-xs text-gray-400 font-semibold">Items</p>
+            <p className="font-black text-gray-900">{order.cart.length}</p>
           </div>
         </div>
 

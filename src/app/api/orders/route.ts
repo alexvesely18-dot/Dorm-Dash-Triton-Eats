@@ -86,26 +86,35 @@ async function handlePost(req: NextRequest) {
     return NextResponse.json({ error: "Invalid college" }, { status: 400 });
   }
 
-  // Parse cart — items may be objects {name, quantity, type} or legacy strings
+  // Parse cart — items may be objects {name, quantity, type} or legacy strings.
+  // We no longer price food on the platform; cart is just a list of item names + quantities
+  // so the dasher knows what to grab at the counter.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawCart: any[] = Array.isArray(body.cart) ? body.cart.slice(0, 50) : [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const foodItems  = rawCart.filter((i: any) => i.type === "food").reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const drinkItems = rawCart.filter((i: any) => i.type === "drink").reduce((s: number, i: any) => s + (Number(i.quantity) || 1), 0);
-  // Normalise to human-readable strings for storage and dasher display
   const cart: string[] = rawCart.map((i) =>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     typeof i === "string" ? sanitizeText(i, 100) : `${Number((i as any).quantity) || 1}× ${sanitizeText(String((i as any).name), 100)}`
   );
+  if (cart.length === 0) {
+    return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
+  }
+
+  // Parse optional Triton2Go receipt total from OCR for HDH commission reporting.
+  // The OCR returns "$16.00"-style strings, so strip non-digits/decimal.
+  const rawReceipt = body.receiptTotal ?? null;
+  let receiptTotal: number | undefined;
+  if (rawReceipt != null) {
+    const cleaned = String(rawReceipt).replace(/[^0-9.]/g, "");
+    const n = parseFloat(cleaned);
+    if (Number.isFinite(n) && n > 0 && n < 1000) receiptTotal = n;
+  }
 
   const breakdown = calculateOrder({
     hall: hallId,
     college: collegeId,
-    foodItems,
-    drinkItems,
     deliverToRoom: Boolean(body.deliverToRoom),
     adaFreeDelivery: Boolean(body.adaFreeDelivery),
+    receiptTotal,
   });
 
   // Pilot whitelist — when env var is set, only specific buildings are eligible.
@@ -114,13 +123,6 @@ async function handlePost(req: NextRequest) {
     return NextResponse.json(
       { error: `${buildingName} is not part of the current pilot. Pilot is limited to selected buildings during the HDH trial.` },
       { status: 400 },
-    );
-  }
-
-  if (!breakdown.meetsMinimum) {
-    return NextResponse.json(
-      { error: `Minimum order is $4.00. Add $${breakdown.minimumShortfall.toFixed(2)} more.` },
-      { status: 400 }
     );
   }
 
@@ -138,9 +140,9 @@ async function handlePost(req: NextRequest) {
     pid_last4:       body.pid_last4    != null ? sanitizeText(String(body.pid_last4), 4) : null,
     pickup_time:     body.pickup_time  != null ? sanitizeText(String(body.pickup_time), 20) : null,
     order_number:    sanitizeText(String(body.order_number ?? id), 30),
-    subtotal:        breakdown.subtotal,
     deliveryFee:     breakdown.deliveryFee,
     roomFee:         breakdown.roomFee,
+    receiptTotal:    breakdown.receiptTotal > 0 ? breakdown.receiptTotal : undefined,
     commission:      breakdown.commission,
     carbonSavedLbs:  breakdown.carbonSavedLbs,
     adaFreeDelivery: breakdown.adaFreeDelivery,

@@ -12,10 +12,14 @@ export type Order = {
   pid_last4: string | null;
   pickup_time: string | null;
   order_number: string;
+  // Total amount the student paid the platform — just delivery + room fees. Food cost is
+  // paid separately to HDH via Triton2Go and is not part of this number.
   total: number;
-  subtotal: number;
   deliveryFee: number;
   roomFee: number;
+  // Triton2Go receipt total captured from the OCR (informational only — used for HDH
+  // commission reporting in the admin dashboard, never displayed to the student or dasher).
+  receiptTotal?: number;
   // HDH commission revenue captured at order time so reporting is stable even if rates change.
   commission?: number;
   // Lbs of CO2 saved vs. the student driving themselves; used for sustainability counters.
