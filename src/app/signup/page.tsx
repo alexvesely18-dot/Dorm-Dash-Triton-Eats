@@ -21,6 +21,9 @@ export default function SignUpPage() {
   const [room, setRoom] = useState("");
   const [emailError, setEmailError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  // Tracks whether the user has *tried* to submit yet — suppresses the validation
+  // hint on first paint so we don't yell at someone who hasn't even typed yet.
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // Redirect if already signed up
   useEffect(() => {
@@ -46,6 +49,7 @@ export default function SignUpPage() {
     building;
 
   const handleSubmit = () => {
+    setSubmitAttempted(true);
     if (!canSubmit || submitted) return;
     setSubmitted(true);
     localStorage.setItem("user_name",     `${firstName.trim()} ${lastName.trim()}`);
@@ -180,7 +184,7 @@ export default function SignUpPage() {
           >
             🎓 Create My Account
           </button>
-          {!canSubmit && (
+          {submitAttempted && !canSubmit && (
             <p className="text-center text-xs text-gray-400">
               {!email ? "Enter your UCSD email" :
                !email.endsWith("@ucsd.edu") ? "Must use a @ucsd.edu email" :

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { getCollegeTheme } from "@/lib/campus";
@@ -49,12 +50,18 @@ function formatDate(iso: string) {
 }
 
 export default function OrdersPage() {
+  const router = useRouter();
   const [history, setHistory] = useState<StudentOrder[]>([]);
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [theme, setTheme] = useState(getCollegeTheme(null));
 
   useEffect(() => {
+    // Auth guard — bounce unauthenticated visitors back to the landing page.
+    if (!localStorage.getItem("user_name") && !localStorage.getItem("user_first")) {
+      router.replace("/");
+      return;
+    }
     const college = localStorage.getItem("user_college");
     setTheme(getCollegeTheme(college));
 

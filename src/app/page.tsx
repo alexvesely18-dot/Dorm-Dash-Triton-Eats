@@ -27,14 +27,22 @@ export default function LoginPage() {
         <div className="animate-float text-7xl mb-5 select-none drop-shadow-2xl">🛵</div>
         <h1 className="text-5xl font-black tracking-tight animate-slide-up">Dorm Dash</h1>
         <p className="text-white/70 mt-2 text-base animate-slide-up stagger-1">UCSD Triton Eats Delivery</p>
-        <div className="flex gap-2 mt-6 flex-wrap justify-center">
+        <div className="flex flex-wrap justify-center gap-x-3 gap-y-2 mt-6">
           {["Fast Pickup", "Triton2Go ✓", "Dorm Delivery"].map((t, i) => (
             <span key={t} className={`bg-white/15 backdrop-blur text-white/90 text-xs font-medium px-3 py-1.5 rounded-full border border-white/10 animate-pop-in stagger-${i+2}`}>{t}</span>
           ))}
         </div>
 
+        {/* Pricing comparison — total student cost (Triton2Go meal + our delivery) vs. an
+            equivalent off-campus DoorDash order. The headline number both HDH and students care about. */}
+        <div className="mt-4 flex items-center gap-2 bg-[#F5B700]/20 backdrop-blur border border-[#F5B700]/40 rounded-full px-4 py-1.5 animate-pop-in stagger-3">
+          <span className="text-[#F5B700] text-[11px] font-black tracking-wide">$8.50 avg</span>
+          <span className="text-white/40 text-[10px]">·</span>
+          <span className="text-white/70 text-[11px] font-medium">vs. $14.59 on DoorDash</span>
+        </div>
+
         {/* HDH-aligned messaging — honest framing until a formal partnership is in place. */}
-        <div className="mt-5 flex items-center gap-2 bg-white/10 backdrop-blur border border-white/15 rounded-full px-4 py-1.5 animate-pop-in stagger-4">
+        <div className="mt-3 flex items-center gap-2 bg-white/10 backdrop-blur border border-white/15 rounded-full px-4 py-1.5 animate-pop-in stagger-4">
           <span className="w-1.5 h-1.5 bg-[#F5B700] rounded-full"/>
           <span className="text-white/80 text-[11px] font-semibold tracking-wide">Built for UCSD Housing-Dining-Hospitality</span>
         </div>
@@ -99,7 +107,7 @@ export default function LoginPage() {
             </Link>
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-gray-200"/>
-              <span className="text-xs text-gray-400">new to Dorm Dash?</span>
+              <span className="text-xs text-gray-400">New to Dorm Dash?</span>
               <div className="flex-1 h-px bg-gray-200"/>
             </div>
             <Link href="/signup" className="w-full flex items-center justify-center border-2 border-[#003087] text-[#003087] font-semibold py-3.5 rounded-2xl hover:bg-[#003087]/5 transition text-sm">

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bell, Plus, ChevronRight, Star } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import type { Order } from "@/lib/orderStore";
@@ -27,7 +28,7 @@ const STATUS_COLOR: Record<string, string> = {
   delivered: "bg-green-400",
 };
 
-function timeOfDayGreeting() {
+function computeGreeting(): string {
   const h = new Date().getHours();
   if (h < 12) return "Good morning";
   if (h < 17) return "Good afternoon";
@@ -35,10 +36,12 @@ function timeOfDayGreeting() {
 }
 
 export default function HomePage() {
+  const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [userName, setUserName] = useState("Triton");
-  const [userInitials, setUserInitials] = useState("AT");
+  const [userName, setUserName] = useState("");
+  const [userInitials, setUserInitials] = useState("");
+  const [greeting, setGreeting] = useState("");
   const [theme, setTheme] = useState(getCollegeTheme(null));
   const [recentOrders, setRecentOrders] = useState<{ id: string; hall: string; hallEmoji: string; cart: string[]; total: string; deliveredAt?: string }[]>([]);
   const [ratingStars, setRatingStars] = useState(0);
@@ -46,15 +49,19 @@ export default function HomePage() {
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
   useEffect(() => {
+    // Auth guard — bounce unauthenticated visitors back to the landing page.
+    const stored = localStorage.getItem("user_name") || localStorage.getItem("user_first");
+    if (!stored) { router.replace("/"); return; }
+
     const id = localStorage.getItem("dorm_dash_order_id");
     setOrderId(id);
-    const name = localStorage.getItem("user_first") ?? localStorage.getItem("user_name") ?? "Triton";
-    setUserName(name.split(" ")[0]);
-    const full = localStorage.getItem("user_name") ?? "Alex Triton";
-    const parts = full.trim().split(" ");
-    setUserInitials(((parts[0]?.[0] ?? "A") + (parts[1]?.[0] ?? "T")).toUpperCase());
+    setUserName(stored.split(" ")[0]);
+    const parts = stored.trim().split(" ");
+    setUserInitials(((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase());
     const college = localStorage.getItem("user_college");
     setTheme(getCollegeTheme(college));
+    // Compute greeting on the client to avoid SSR/client hydration mismatch.
+    setGreeting(computeGreeting());
 
     try {
       const history = JSON.parse(localStorage.getItem("student_history") ?? "[]");
@@ -128,7 +135,7 @@ export default function HomePage() {
         <div className="relative flex items-center justify-between max-w-md mx-auto">
           <div className="animate-slide-down">
             <p className="text-white/70 text-sm flex items-center gap-1.5">
-              {timeOfDayGreeting()} <span className="animate-wiggle inline-block">👋</span>
+              {greeting || "Welcome"} <span className="animate-wiggle inline-block">👋</span>
             </p>
             <h1 className="text-white text-3xl font-black mt-0.5 tracking-tight">Hey, {userName}!</h1>
           </div>

@@ -41,6 +41,11 @@ export default function ProfilePage() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    // Auth guard — bounce unauthenticated visitors back to the landing page.
+    if (!localStorage.getItem("user_name") && !localStorage.getItem("user_first")) {
+      router.replace("/");
+      return;
+    }
     const col = localStorage.getItem("user_college") ?? "";
     setTheme(getCollegeTheme(col));
 

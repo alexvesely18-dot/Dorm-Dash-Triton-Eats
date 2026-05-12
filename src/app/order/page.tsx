@@ -668,6 +668,13 @@ function OrderPageInner() {
     );
   }, []);
 
+  // Auth guard — unauthenticated visitors get bounced to the landing page.
+  useEffect(() => {
+    if (!localStorage.getItem("user_name") && !localStorage.getItem("user_first")) {
+      router.replace("/");
+    }
+  }, [router]);
+
   // Redirect back to /home if the student already has an active order
   useEffect(() => {
     const existingId = localStorage.getItem("dorm_dash_order_id");
@@ -1312,8 +1319,37 @@ function OrderPageInner() {
   );
 }
 
+function OrderLoadingSkeleton() {
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+      <div className="bg-[#003087] px-5 pt-14 pb-6 text-white">
+        <div className="max-w-md mx-auto">
+          <div className="h-3 w-24 bg-white/15 rounded animate-pulse mb-3"/>
+          <div className="h-8 w-40 bg-white/25 rounded animate-pulse"/>
+          <div className="h-3 w-56 bg-white/10 rounded animate-pulse mt-2"/>
+        </div>
+      </div>
+      <main className="flex-1 max-w-md mx-auto w-full px-5 py-5 flex flex-col gap-3">
+        {[0,1,2].map(i => (
+          <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+            <div className="w-12 h-12 bg-gray-100 rounded-2xl animate-pulse"/>
+            <div className="flex-1 flex flex-col gap-2">
+              <div className="h-3 w-28 bg-gray-100 rounded animate-pulse"/>
+              <div className="h-3 w-20 bg-gray-100 rounded animate-pulse"/>
+            </div>
+          </div>
+        ))}
+      </main>
+    </div>
+  );
+}
+
 export default function OrderPage() {
-  return <Suspense><OrderPageInner /></Suspense>;
+  return (
+    <Suspense fallback={<OrderLoadingSkeleton/>}>
+      <OrderPageInner />
+    </Suspense>
+  );
 }
 
 function Step({ n, label }: { n: number; label: string }) {
