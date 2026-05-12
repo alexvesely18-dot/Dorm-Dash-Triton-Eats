@@ -49,6 +49,9 @@ function isWeekend(): boolean {
 }
 
 export function isHallOpen(hallId: string): boolean {
+  // Demo override: NEXT_PUBLIC_DEMO_MODE forces a small set of halls open so
+  // pitches don't fall flat at off-hours.
+  if (process.env.NEXT_PUBLIC_DEMO_MODE === "true" && DEMO_OPEN_HALLS.has(hallId)) return true;
   const sched = HALL_SCHEDULES[hallId];
   if (!sched) return true;
   const range = isWeekend() ? sched.weekend : sched.weekday;
@@ -59,7 +62,10 @@ export function isHallOpen(hallId: string): boolean {
   return now >= open && now < close;
 }
 
+const DEMO_OPEN_HALLS = new Set(["64deg", "pines"]);
+
 export function hallOpenLabel(hallId: string): string {
+  if (process.env.NEXT_PUBLIC_DEMO_MODE === "true" && DEMO_OPEN_HALLS.has(hallId)) return "Open";
   const sched = HALL_SCHEDULES[hallId];
   if (!sched) return "Open";
   const range = isWeekend() ? sched.weekend : sched.weekday;
