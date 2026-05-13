@@ -92,17 +92,14 @@ export const DISTANCE_TIERS: Record<
 };
 
 export const PRICING = {
-  // Food is paid to HDH via Triton2Go — the platform never charges for food and does not
-  // display item prices anywhere in the UI. Only delivery + room fees are platform revenue.
+  // Food is paid to the dining hall directly through Triton2Go — the platform never
+  // charges for food and does not display item prices anywhere in the UI. Only
+  // delivery + room fees are platform revenue.
   roomDelivery: 2.00,
   // Dasher receives this fraction of (deliveryFee + roomFee), with a hard floor below.
   // Platform keeps the rest. The floor exists because no one will accept a sub-$2 trip.
   dasherPayoutRatio: 0.75,
   dasherPayoutFloor: 2.00,
-  // Commission paid by HDH to the platform on the Triton2Go food subtotal we capture
-  // from the receipt OCR. When we can't read the receipt, commission for that order is 0.
-  // Per-hall override via HALL_COMMISSION.
-  hdhCommissionDefault: 0.10,
   // Estimated CO2 saved per delivery vs. the student driving themselves to the dining
   // hall in a 25 mpg ICE car. ~1.5 mi round trip @ 19.6 lb CO2/gal of gasoline.
   carbonSavedLbsPerOrder: 1.18,
@@ -114,16 +111,6 @@ export const PRICING = {
     far:    3.00,
   },
 } as const;
-
-// Per-hall commission overrides. Defaults to PRICING.hdhCommissionDefault when omitted.
-// HDH may want different rates for high-margin halls vs. low-margin ones.
-export const HALL_COMMISSION: Partial<Record<HallId, number>> = {
-  // Example: pines: 0.12, sixthDining: 0.08
-};
-
-export function getCommissionRate(hall: HallId): number {
-  return HALL_COMMISSION[hall] ?? PRICING.hdhCommissionDefault;
-}
 
 export function getDistanceTier(
   hall: HallId,
@@ -143,11 +130,11 @@ export interface OrderInput {
   hall: HallId;
   college: CollegeId;
   deliverToRoom: boolean;
-  // ADA-registered students pay no delivery or room fee. Verified server-side via SSO claim
-  // in production; for now the client passes the flag from the user's profile.
+  // ADA-registered students pay no delivery or room fee.
   adaFreeDelivery?: boolean;
-  // OCR-captured Triton2Go receipt total, used for HDH commission reporting only.
-  // Never displayed in the user-facing app. When unknown, commission is 0.
+  // OCR-captured Triton2Go receipt total. Stored as an analytics metric showing the
+  // food-revenue Dorm Dash drove for UCSD dining — useful for any future partnership
+  // conversation. Never displayed to the student or dasher.
   receiptTotal?: number;
 }
 
@@ -156,7 +143,6 @@ export interface OrderBreakdown {
   deliveryFee: number;
   roomFee: number;
   total: number;
-  commission: number;
   carbonSavedLbs: number;
   adaFreeDelivery: boolean;
   receiptTotal: number;
@@ -171,28 +157,13 @@ export function calculateOrder(input: OrderInput): OrderBreakdown {
   const receiptTotal = Number.isFinite(input.receiptTotal) && (input.receiptTotal ?? 0) > 0
     ? round2(input.receiptTotal as number)
     : 0;
-  const commission   = round2(receiptTotal * getCommissionRate(input.hall));
   return {
     tier,
     deliveryFee, roomFee, total,
-    commission,
     carbonSavedLbs: PRICING.carbonSavedLbsPerOrder,
     adaFreeDelivery: adaFree,
     receiptTotal,
   };
-}
-
-// Pilot mode — when set, only orders to whitelisted buildings are accepted.
-// Set NEXT_PUBLIC_PILOT_BUILDINGS to a comma-separated list (e.g. "Catalyst Hall,Mosaic Hall")
-// to limit the live deployment to a small test cohort during the HDH pilot.
-export function getPilotBuildings(): string[] {
-  const raw = process.env.NEXT_PUBLIC_PILOT_BUILDINGS ?? "";
-  return raw.split(",").map(s => s.trim()).filter(Boolean);
-}
-
-export function isBuildingInPilot(building: string): boolean {
-  const pilot = getPilotBuildings();
-  return pilot.length === 0 || pilot.includes(building);
 }
 
 // 75% of the fees the student paid for getting it there, with a $2 floor so

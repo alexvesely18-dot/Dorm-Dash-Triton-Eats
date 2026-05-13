@@ -6,7 +6,6 @@ import {
   CollegeId,
   DINING_HALLS,
   COLLEGES,
-  isBuildingInPilot,
 } from "@/lib/pricing";
 import { rateLimit, getIp } from "@/lib/rateLimit";
 import { sanitizeText } from "@/lib/validate";
@@ -99,8 +98,8 @@ async function handlePost(req: NextRequest) {
     return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
   }
 
-  // Parse optional Triton2Go receipt total from OCR for HDH commission reporting.
-  // The OCR returns "$16.00"-style strings, so strip non-digits/decimal.
+  // Parse optional Triton2Go receipt total from the OCR. Kept as an internal
+  // analytics metric (food revenue we drove); never displayed in the app.
   const rawReceipt = body.receiptTotal ?? null;
   let receiptTotal: number | undefined;
   if (rawReceipt != null) {
@@ -116,15 +115,6 @@ async function handlePost(req: NextRequest) {
     adaFreeDelivery: Boolean(body.adaFreeDelivery),
     receiptTotal,
   });
-
-  // Pilot whitelist — when env var is set, only specific buildings are eligible.
-  const buildingName = sanitizeText(String(body.building ?? ""), 100);
-  if (!isBuildingInPilot(buildingName)) {
-    return NextResponse.json(
-      { error: `${buildingName} is not part of the current pilot. Pilot is limited to selected buildings during the HDH trial.` },
-      { status: 400 },
-    );
-  }
 
   const id = `TDE-${Math.floor(20000 + Math.random() * 79999)}`;
 
@@ -143,7 +133,6 @@ async function handlePost(req: NextRequest) {
     deliveryFee:     breakdown.deliveryFee,
     roomFee:         breakdown.roomFee,
     receiptTotal:    breakdown.receiptTotal > 0 ? breakdown.receiptTotal : undefined,
-    commission:      breakdown.commission,
     carbonSavedLbs:  breakdown.carbonSavedLbs,
     adaFreeDelivery: breakdown.adaFreeDelivery,
     total:           breakdown.total,

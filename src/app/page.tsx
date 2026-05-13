@@ -33,18 +33,9 @@ export default function LoginPage() {
           ))}
         </div>
 
-        {/* Pricing comparison — total student cost (Triton2Go meal + our delivery) vs. an
-            equivalent off-campus DoorDash order. The headline number both HDH and students care about. */}
-        <div className="mt-4 flex items-center gap-2 bg-[#F5B700]/20 backdrop-blur border border-[#F5B700]/40 rounded-full px-4 py-1.5 animate-pop-in stagger-3">
-          <span className="text-[#F5B700] text-[11px] font-black tracking-wide">$8.50 avg</span>
-          <span className="text-white/40 text-[10px]">·</span>
-          <span className="text-white/70 text-[11px] font-medium">vs. $14.59 on DoorDash</span>
-        </div>
-
-        {/* HDH-aligned messaging — honest framing until a formal partnership is in place. */}
-        <div className="mt-3 flex items-center gap-2 bg-white/10 backdrop-blur border border-white/15 rounded-full px-4 py-1.5 animate-pop-in stagger-4">
+        <div className="mt-4 flex items-center gap-2 bg-white/10 backdrop-blur border border-white/15 rounded-full px-4 py-1.5 animate-pop-in stagger-4">
           <span className="w-1.5 h-1.5 bg-[#F5B700] rounded-full"/>
-          <span className="text-white/80 text-[11px] font-semibold tracking-wide">Built for UCSD Housing-Dining-Hospitality</span>
+          <span className="text-white/80 text-[11px] font-semibold tracking-wide">By UCSD students, for UCSD students</span>
         </div>
       </div>
 

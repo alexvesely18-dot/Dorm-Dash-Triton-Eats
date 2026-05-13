@@ -13,15 +13,13 @@ export type Order = {
   pickup_time: string | null;
   order_number: string;
   // Total amount the student paid the platform — just delivery + room fees. Food cost is
-  // paid separately to HDH via Triton2Go and is not part of this number.
+  // paid separately to the dining hall via Triton2Go and is not part of this number.
   total: number;
   deliveryFee: number;
   roomFee: number;
-  // Triton2Go receipt total captured from the OCR (informational only — used for HDH
-  // commission reporting in the admin dashboard, never displayed to the student or dasher).
+  // Triton2Go receipt total captured from the OCR. Stored as an analytics metric of the
+  // food revenue Dorm Dash drove for UCSD dining; never displayed to the student or dasher.
   receiptTotal?: number;
-  // HDH commission revenue captured at order time so reporting is stable even if rates change.
-  commission?: number;
   // Lbs of CO2 saved vs. the student driving themselves; used for sustainability counters.
   carbonSavedLbs?: number;
   // True if the student was ADA-verified; deliveryFee+roomFee are zero in this case.

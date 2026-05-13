@@ -231,7 +231,7 @@ export default function DasherSignupPage() {
               <div className="text-xs text-gray-700 leading-relaxed">
                 I confirm I am personally responsible for my own transportation, follow campus traffic and helmet
                 rules, and have read the <Link href="/privacy" className="text-[#003087] font-semibold underline">privacy notice</Link>.
-                Triton Eats and UCSD HDH do not provide vehicle or medical insurance for dashers.
+                Dorm Dash does not provide vehicle or medical insurance for dashers.
               </div>
             </label>
           </div>

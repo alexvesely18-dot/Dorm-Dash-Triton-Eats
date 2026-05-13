@@ -63,7 +63,7 @@ export default function DasherCompletePage() {
           <p className="font-black text-[#003087]">${todayTotal.toFixed(2)}</p>
         </div>
 
-        {/* Sustainability — talking point for the HDH pitch */}
+        {/* Sustainability counter */}
         <div className="mt-3 bg-green-50 border border-green-100 rounded-2xl px-4 py-3 flex items-center gap-3">
           <span className="text-xl">🌱</span>
           <div>

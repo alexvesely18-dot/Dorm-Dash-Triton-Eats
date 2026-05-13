@@ -153,13 +153,14 @@ export default function HomePage() {
 
       <main className="flex-1 max-w-md mx-auto w-full px-5 -mt-5 relative z-10">
 
-        {/* Wellness banner — controlled by HDH via NEXT_PUBLIC_WELLNESS_BANNER env var */}
+        {/* In-app message banner — copy comes from NEXT_PUBLIC_WELLNESS_BANNER so we can
+            push timely notices (finals week, weather, promos) without a code change. */}
         {process.env.NEXT_PUBLIC_WELLNESS_BANNER && (
           <div className="mt-5 bg-[#003087] text-white rounded-3xl px-5 py-4 flex items-center gap-3 shadow-lg">
             <span className="text-2xl">💙</span>
             <div className="flex-1">
               <p className="font-bold text-sm">{process.env.NEXT_PUBLIC_WELLNESS_BANNER}</p>
-              <p className="text-white/60 text-[11px] mt-0.5">A message from UCSD Housing-Dining-Hospitality</p>
+              <p className="text-white/60 text-[11px] mt-0.5">Dorm Dash</p>
             </div>
           </div>
         )}

@@ -816,7 +816,7 @@ function OrderPageInner() {
       toDoor,
       scheduledFor:  scheduleMode && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
       adaFreeDelivery: typeof window !== "undefined" && localStorage.getItem("user_ada_free_delivery") === "true",
-      // OCR'd Triton2Go receipt total — server stores it for HDH commission reporting only,
+      // OCR'd Triton2Go receipt total — server stores it as an internal analytics metric,
       // never displayed in the app.
       receiptTotal: extracted?.total ?? null,
     };
