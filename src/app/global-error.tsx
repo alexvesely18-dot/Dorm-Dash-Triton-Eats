@@ -20,7 +20,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           <div className="text-5xl mb-4 select-none">🛵</div>
           <h1 className="text-2xl font-black text-gray-900">Something went sideways</h1>
           <p className="text-sm text-gray-500 mt-2">
-            Dorm Dash hit an unexpected error. Try again, and if it keeps happening, let HDH support know.
+            Dorm Dash hit an unexpected error. Try again, and if it keeps happening, let support know.
           </p>
           {error?.digest && (
             <p className="text-[11px] text-gray-400 font-mono mt-3">Ref: {error.digest}</p>

@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { setOrder, Order, BUILDING_COORDS, BUILDING_COLLEGE } from "@/lib/orderStore";
 import { isValidAdminToken } from "@/lib/adminAuth";
 import { rateLimit, getIp } from "@/lib/rateLimit";
-import { calculateOrder, DINING_HALLS, HallId, CollegeId, COLLEGES, PRICING } from "@/lib/pricing";
+import { calculateOrder, DINING_HALLS, HallId, CollegeId, COLLEGES } from "@/lib/pricing";
 
 // POST /api/admin/seed-demo
-// Seeds ~80 delivered orders spread over the past 14 days so the HDH Insights
-// dashboard renders meaningful numbers during the pitch demo. Auth-gated; safe
-// to run in production.
+// Seeds ~80 delivered orders spread over the past 14 days so the Analytics
+// dashboard renders meaningful numbers for screenshots/testing. Auth-gated; safe
+// to run in production (demo orders TTL out in 24 hours).
 
 const HALL_IDS: HallId[] = ["pines", "ventanas", "sixty4", "ovt", "canyon", "bistro", "sixthDining"];
 const COLLEGE_IDS: CollegeId[] = ["seventh", "erc", "sixth", "marshall", "warren", "muir", "revelle", "eighth"];
@@ -110,7 +110,6 @@ export async function POST(req: NextRequest) {
       deliveryFee:     breakdown.deliveryFee,
       roomFee:         breakdown.roomFee,
       receiptTotal:    breakdown.receiptTotal,
-      commission:      breakdown.commission,
       carbonSavedLbs:  breakdown.carbonSavedLbs,
       adaFreeDelivery: breakdown.adaFreeDelivery,
       total:           breakdown.total,
@@ -139,8 +138,7 @@ export async function POST(req: NextRequest) {
     written,
     summary: {
       orders: TARGET,
-      approxGmv: `~$${(TARGET * 12).toFixed(0)}`,
-      approxCommission: `~$${(TARGET * 12 * PRICING.hdhCommissionDefault).toFixed(2)}`,
+      approxFoodRevenueDriven: `~$${(TARGET * 12).toFixed(0)}`,
     },
   });
 }
