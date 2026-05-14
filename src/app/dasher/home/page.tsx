@@ -131,6 +131,9 @@ export default function DasherHomePage() {
       const data = await res.json();
       if (!data.order?.id) { setClaiming(false); return; }
       localStorage.setItem("dasher_claimed_order_id", data.order.id);
+      // Per-order secret required on every subsequent dasher PATCH so a random
+      // caller who guessed the order id can't mark it delivered or spoof GPS.
+      if (data.claimSecret) localStorage.setItem("dasher_claim_sig", String(data.claimSecret));
       window.location.href = "/dasher/pickup";
     } catch {
       setClaiming(false);

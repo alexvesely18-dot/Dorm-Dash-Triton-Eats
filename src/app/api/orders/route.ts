@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllOrders, setOrder, Order } from "@/lib/orderStore";
+import { getAllOrders, setOrder, publicOrder, Order } from "@/lib/orderStore";
 import {
   calculateOrder,
   HallId,
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     return true;
   });
 
-  return NextResponse.json({ orders: available });
+  return NextResponse.json({ orders: available.map(publicOrder) });
 }
 
 // POST /api/orders  — student places an order
@@ -143,7 +143,17 @@ async function handlePost(req: NextRequest) {
     destLng:         Number.isFinite(Number(body.destLng)) ? Number(body.destLng) : -117.2340,
     room:            body.room != null ? sanitizeText(String(body.room), 20) : null,
     toDoor:          Boolean(body.toDoor),
-    scheduledFor:    body.scheduledFor != null ? String(body.scheduledFor) : undefined,
+    // scheduledFor must parse as a real date that's within the next 7 days. Rejects
+    // garbage strings and far-future spam without throwing.
+    scheduledFor:    (() => {
+      if (body.scheduledFor == null) return undefined;
+      const s = String(body.scheduledFor);
+      const t = Date.parse(s);
+      if (isNaN(t)) return undefined;
+      const now = Date.now();
+      if (t < now - 60_000 || t > now + 7 * 24 * 3600 * 1000) return undefined;
+      return new Date(t).toISOString();
+    })(),
     createdAt:       new Date().toISOString(),
   };
 
@@ -158,5 +168,5 @@ async function handlePost(req: NextRequest) {
   }
 
   await setOrder(id, order);
-  return NextResponse.json({ id, order, breakdown });
+  return NextResponse.json({ id, order: publicOrder(order), breakdown });
 }

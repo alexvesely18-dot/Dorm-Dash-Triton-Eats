@@ -20,6 +20,10 @@ export type Order = {
   // Triton2Go receipt total captured from the OCR. Stored as an analytics metric of the
   // food revenue Dorm Dash drove for UCSD dining; never displayed to the student or dasher.
   receiptTotal?: number;
+  // Private: a per-order secret issued at claim time and required on subsequent dasher
+  // PATCHes (status, GPS, etc.). Stripped from every GET response so it never leaks.
+  // This is what prevents anyone-knowing-an-order-id from marking the order delivered.
+  claimSecret?: string;
   // Lbs of CO2 saved vs. the student driving themselves; used for sustainability counters.
   carbonSavedLbs?: number;
   // True if the student was ADA-verified; deliveryFee+roomFee are zero in this case.
@@ -284,6 +288,16 @@ export async function setOrder(id: string, order: Order): Promise<void> {
 
 export async function deleteOrder(id: string): Promise<void> {
   await redis.del(`${PFX}${id}`);
+}
+
+/** Strip server-side private fields from an order before returning it over the wire.
+ *  Currently scrubs the claimSecret so it can never leak via GET responses. */
+export function publicOrder(order: Order | null | undefined): Order | null {
+  if (!order) return null;
+  // Avoid mutating the cached object.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { claimSecret, ...rest } = order;
+  return rest as Order;
 }
 
 export async function getAllOrders(): Promise<Order[]> {

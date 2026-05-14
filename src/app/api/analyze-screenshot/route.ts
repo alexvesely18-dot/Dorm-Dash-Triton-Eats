@@ -2,8 +2,14 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, getIp } from "@/lib/rateLimit";
 import { isBase64SizeOk } from "@/lib/validate";
+import { redis } from "@/lib/redis";
 
 export const maxDuration = 60;
+
+// Cost cap: refuse OCR requests once we've spent this many calls today.
+// Each call costs ~$0.01, so 5000/day caps the daily damage at ~$50 even if
+// the rate limiter is bypassed by a distributed attack across many IPs.
+const DAILY_OCR_CAP = Number(process.env.OCR_DAILY_CAP ?? 5000);
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
 type AllowedMime = typeof ALLOWED_MIME_TYPES[number];
@@ -127,6 +133,21 @@ export async function POST(req: NextRequest) {
       { success: false, error: "Too many requests. Try again in 1 minute." },
       { status: 429 },
     );
+  }
+
+  // Global daily call cap, distributed via Redis so the limit holds across instances.
+  const dayKey = `ocrDay:${new Date().toISOString().slice(0, 10)}`;
+  try {
+    const count = await redis.incr(dayKey);
+    if (count === 1) await redis.expire(dayKey, 26 * 3600);
+    if (count > DAILY_OCR_CAP) {
+      return NextResponse.json(
+        { success: false, error: "OCR temporarily unavailable. Please enter receipt details manually." },
+        { status: 503 },
+      );
+    }
+  } catch {
+    // Redis hiccup shouldn't break OCR; just skip the cap check this once.
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {

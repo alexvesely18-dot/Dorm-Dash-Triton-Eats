@@ -78,9 +78,13 @@ export default function AdminDashboard() {
         patch.status = "claimed";
         patch.claimedAt = new Date().toISOString();
       }
+      const adminToken = localStorage.getItem("admin_token") ?? "";
       const res = await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminToken}`,
+        },
         body: JSON.stringify(patch),
       });
       if (!res.ok) return;

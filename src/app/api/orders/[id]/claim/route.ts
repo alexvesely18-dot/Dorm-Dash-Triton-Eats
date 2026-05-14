@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrder, setOrder } from "@/lib/orderStore";
+import { randomBytes } from "node:crypto";
+import { getOrder, setOrder, publicOrder } from "@/lib/orderStore";
 import { rateLimit, getIp } from "@/lib/rateLimit";
 import { isValidOrderId, sanitizeText } from "@/lib/validate";
 
-// POST /api/orders/[id]/claim — atomically claim a pending order for a dasher
+// POST /api/orders/[id]/claim — atomically claim a pending order for a dasher.
+// Issues a per-order claimSecret returned in the response; the dasher's client must
+// echo it back via the X-Claim-Sig header on every subsequent PATCH so a random
+// caller who guessed the order id cannot mark the order delivered or spoof GPS.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -34,6 +38,7 @@ export async function POST(
   const dasherName = sanitizeText(body.dasherName ?? "Your Dasher", 80);
   const rawTransport = String(body.dasherTransport ?? "bike");
   const dasherTransport: "bike" | "scooter" = rawTransport === "scooter" ? "scooter" : "bike";
+  const claimSecret = randomBytes(24).toString("hex");
 
   const updated = {
     ...order,
@@ -41,7 +46,10 @@ export async function POST(
     dasherName,
     dasherTransport,
     claimedAt: new Date().toISOString(),
+    claimSecret,
   };
   await setOrder(id, updated);
-  return NextResponse.json({ order: updated });
+  // Return the public order plus the secret separately. The secret never appears
+  // inside the order object on any later GET.
+  return NextResponse.json({ order: publicOrder(updated), claimSecret });
 }

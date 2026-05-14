@@ -65,9 +65,10 @@ export default function DasherDeliveryPage() {
       const now = Date.now();
       if (now - lastUpdate < 5000) return;
       lastUpdate = now;
+      const sig = localStorage.getItem("dasher_claim_sig") ?? "";
       fetch(`/api/orders/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Claim-Sig": sig },
         body: JSON.stringify({ dasherLat: pos.coords.latitude, dasherLng: pos.coords.longitude }),
       }).catch(() => {});
     }, () => {}, { enableHighAccuracy: true });
@@ -99,9 +100,10 @@ export default function DasherDeliveryPage() {
     if (!order || delivering) return;
     setDelivering(true);
     try {
+      const sig = localStorage.getItem("dasher_claim_sig") ?? "";
       const res = await fetch(`/api/orders/${order.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Claim-Sig": sig },
         body: JSON.stringify({ status: "delivered" }),
       });
       if (!res.ok) { setDelivering(false); return; }
@@ -109,6 +111,8 @@ export default function DasherDeliveryPage() {
       setDelivering(false);
       return;
     }
+    // Local claim secret is no longer useful after delivery completes.
+    localStorage.removeItem("dasher_claim_sig");
 
     // Only update local state after backend confirms
     try {
