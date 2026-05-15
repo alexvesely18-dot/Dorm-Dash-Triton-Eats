@@ -40,6 +40,16 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      // Defense-in-depth: admin responses must never be cached by any intermediary
+      // proxy or by the browser. This also stops admin order lists from being
+      // served by the browser's back-forward cache after logout.
+      {
+        source: "/api/admin/:path*",
+        headers: [
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private" },
+          { key: "Pragma",        value: "no-cache" },
+        ],
+      },
     ];
   },
 };

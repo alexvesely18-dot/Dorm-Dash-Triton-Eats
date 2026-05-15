@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllOrders, setOrder, publicOrder, Order } from "@/lib/orderStore";
+import { randomInt } from "node:crypto";
+import { getAllOrders, getOrder, setOrder, publicOrder, Order, BUILDING_COORDS, BUILDING_COLLEGE } from "@/lib/orderStore";
 import {
   calculateOrder,
   HallId,
@@ -9,6 +10,19 @@ import {
 } from "@/lib/pricing";
 import { rateLimit, getIp } from "@/lib/rateLimit";
 import { sanitizeText } from "@/lib/validate";
+
+// Trust-anchored hall metadata. The client must not be able to lie about emoji,
+// home college, or GPS coordinates of a hall — derive them server-side from
+// the validated hallId so a malicious client can't redirect a dasher off-campus.
+const HALL_META: Record<HallId, { emoji: string; lat: number; lng: number }> = {
+  pines:       { emoji: "🌲", lat: 32.8767, lng: -117.2425 },
+  ventanas:    { emoji: "🌅", lat: 32.8862, lng: -117.2421 },
+  sixty4:      { emoji: "🌡️", lat: 32.8730, lng: -117.2401 },
+  ovt:         { emoji: "🌊", lat: 32.8806, lng: -117.2370 },
+  canyon:      { emoji: "🏔️", lat: 32.8836, lng: -117.2330 },
+  bistro:      { emoji: "🥪", lat: 32.8850, lng: -117.2402 },
+  sixthDining: { emoji: "6️⃣", lat: 32.8911, lng: -117.2436 },
+};
 
 // GET /api/orders?dasherCollege=Sixth+College
 // Returns pending orders visible to this dasher.
@@ -116,18 +130,43 @@ async function handlePost(req: NextRequest) {
     receiptTotal,
   });
 
-  const id = `TDE-${Math.floor(20000 + Math.random() * 79999)}`;
+  // Validate building against the known list (anchors destLat/destLng + deliveryCollege).
+  const buildingName = sanitizeText(String(body.building ?? ""), 100);
+  const destCoords = BUILDING_COORDS[buildingName];
+  if (!destCoords) {
+    return NextResponse.json({ error: "Invalid building" }, { status: 400 });
+  }
+  const deliveryCollege = BUILDING_COLLEGE[buildingName] ?? "";
+
+  // Server-derived hall metadata. Client-supplied hallEmoji/hallLat/etc. are ignored
+  // so a malicious client can't redirect a dasher to fake coordinates or inject XSS
+  // payloads via the hall fields that show up in dasher screens.
+  const hallMeta = HALL_META[hallId];
+  const hallCollegeName = COLLEGES[DINING_HALLS[hallId].homeCollege].name;
+
+  // Crypto-random order id with collision retry. Math.random()-based ids had a real
+  // birthday-collision rate; using crypto.randomInt and verifying non-existence in
+  // Redis before write closes that.
+  let id = "";
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const candidate = `TDE-${20000 + randomInt(0, 79999)}`;
+    const exists = await getOrder(candidate);
+    if (!exists) { id = candidate; break; }
+  }
+  if (!id) {
+    return NextResponse.json({ error: "Could not allocate order id, please retry" }, { status: 503 });
+  }
 
   const order: Order = {
     id,
     status:          "pending",
     hall:            DINING_HALLS[hallId].name,
-    hallEmoji:       sanitizeText(body.hallEmoji     ?? "🍽", 10),
-    hallCollege:     sanitizeText(body.hallCollege   ?? "", 80),
-    hallLat:         Number.isFinite(Number(body.hallLat)) ? Number(body.hallLat) : 32.8800,
-    hallLng:         Number.isFinite(Number(body.hallLng)) ? Number(body.hallLng) : -117.2340,
+    hallEmoji:       hallMeta.emoji,
+    hallCollege:     hallCollegeName,
+    hallLat:         hallMeta.lat,
+    hallLng:         hallMeta.lng,
     cart,
-    pid_last4:       body.pid_last4    != null ? sanitizeText(String(body.pid_last4), 4) : null,
+    pid_last4:       body.pid_last4    != null ? sanitizeText(String(body.pid_last4), 4).replace(/\D/g, "").slice(0, 4) || null : null,
     pickup_time:     body.pickup_time  != null ? sanitizeText(String(body.pickup_time), 20) : null,
     order_number:    sanitizeText(String(body.order_number ?? id), 30),
     deliveryFee:     breakdown.deliveryFee,
@@ -137,10 +176,10 @@ async function handlePost(req: NextRequest) {
     adaFreeDelivery: breakdown.adaFreeDelivery,
     total:           breakdown.total,
     tier:            breakdown.tier,
-    building:        sanitizeText(String(body.building      ?? ""), 100),
-    deliveryCollege: sanitizeText(String(body.deliveryCollege ?? ""), 80),
-    destLat:         Number.isFinite(Number(body.destLat)) ? Number(body.destLat) : 32.8800,
-    destLng:         Number.isFinite(Number(body.destLng)) ? Number(body.destLng) : -117.2340,
+    building:        buildingName,
+    deliveryCollege,
+    destLat:         destCoords.lat,
+    destLng:         destCoords.lng,
     room:            body.room != null ? sanitizeText(String(body.room), 20) : null,
     toDoor:          Boolean(body.toDoor),
     // scheduledFor must parse as a real date that's within the next 7 days. Rejects

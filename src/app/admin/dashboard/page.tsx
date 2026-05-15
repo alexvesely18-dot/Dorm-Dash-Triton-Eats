@@ -61,8 +61,16 @@ export default function AdminDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const logout = () => {
+  const logout = async () => {
+    const token = localStorage.getItem("admin_token");
     localStorage.removeItem("admin_token");
+    // Best-effort server-side revoke so a stolen token can't outlive the click.
+    if (token) {
+      fetch("/api/admin/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
     router.push("/admin");
   };
 

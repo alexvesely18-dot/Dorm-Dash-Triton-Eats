@@ -3,7 +3,11 @@ interface RateWindow {
   resetAt: number;
 }
 
+// In-memory window store. On serverless, this is per-instance and approximate —
+// a known limitation. The size cap below prevents an unbounded leak if a single
+// instance stays warm and serves a large unique-IP cohort.
 const windows = new Map<string, RateWindow>();
+const MAX_ENTRIES = 10_000;
 
 /**
  * Returns true if the request is allowed, false if rate-limited.
@@ -21,6 +25,19 @@ export function rateLimit(
   const w = windows.get(key);
 
   if (!w || now > w.resetAt) {
+    // Lazy GC: when the Map gets large, sweep expired entries to keep memory bounded.
+    if (windows.size >= MAX_ENTRIES) {
+      for (const [k, v] of windows) {
+        if (now > v.resetAt) windows.delete(k);
+      }
+      // If GC didn't shrink it (unlikely but possible if all entries are fresh),
+      // drop the oldest to make room. This trades correctness for memory safety
+      // — at >10k unique limiter keys per instance you're already under attack.
+      if (windows.size >= MAX_ENTRIES) {
+        const firstKey = windows.keys().next().value;
+        if (firstKey !== undefined) windows.delete(firstKey);
+      }
+    }
     windows.set(key, { count: 1, resetAt: now + windowMs });
     return true;
   }
