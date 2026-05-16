@@ -82,9 +82,10 @@ export default function DasherDeliveryPage() {
     setInput("");
     setSending(true);
     try {
+      const sig = localStorage.getItem("dasher_claim_sig") ?? "";
       await fetch(`/api/orders/${id}/message`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Claim-Sig": sig },
         body: JSON.stringify({ from: "dasher", text }),
       });
       const res = await fetch(`/api/orders/${id}/message`);

@@ -92,8 +92,13 @@ export default function ProfilePage() {
   };
 
   const signOut = () => {
-    ["user_name","user_first","user_email","user_college","user_building","user_phone","user_username","user_room","dorm_dash_order_id"]
-      .forEach(k => localStorage.removeItem(k));
+    // Clear every key this app owns so a shared device doesn't leak the previous
+    // student's name, history, or order tracking.
+    [
+      "user_name","user_first","user_email","user_college","user_building",
+      "user_phone","user_username","user_room","user_ada_free_delivery",
+      "dorm_dash_order_id","student_history",
+    ].forEach(k => localStorage.removeItem(k));
     router.push("/");
   };
 

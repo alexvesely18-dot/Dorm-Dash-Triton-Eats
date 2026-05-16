@@ -374,7 +374,7 @@ export default function DasherHomePage() {
             </div>
 
             <button
-              onClick={() => { ["dasher_name","dasher_college","dasher_transport","dasher_claimed_order_id"].forEach(k => localStorage.removeItem(k)); window.location.href = "/dasher"; }}
+              onClick={() => { ["dasher_name","dasher_college","dasher_transport","dasher_claimed_order_id","dasher_claim_sig","dasher_history"].forEach(k => localStorage.removeItem(k)); window.location.href = "/dasher"; }}
               className="w-full flex items-center justify-center gap-2 bg-white border-2 border-red-200 text-red-500 font-bold py-4 rounded-2xl shadow-sm hover:bg-red-50 transition"
             >
               Sign Out

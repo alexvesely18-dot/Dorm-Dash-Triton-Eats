@@ -25,8 +25,7 @@ export default function PrivacyPage() {
             <li><b>Receipt screenshot &amp; PID last four</b> — to verify pickup at the dining hall.</li>
             <li><b>Order details</b> — items, dining hall, total — used to fulfill the delivery and for internal analytics.</li>
             <li><b>Live GPS</b> — only while a dasher is on an active delivery, only to show the live route to the student. Not retained after the order is delivered.</li>
-            <li><b>In-app messages</b> — between student and dasher; deleted when the order completes.</li>
-            <li><b>Delivery photo</b> — if enabled, used as proof-of-delivery and deleted after 24 hours.</li>
+            <li><b>In-app messages</b> — between student and dasher; capped at 200 per order and expire with the order.</li>
           </ul>
 
           <h2 className="text-base font-bold text-gray-900 mt-4">Who sees it</h2>
