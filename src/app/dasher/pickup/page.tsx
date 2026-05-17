@@ -61,9 +61,10 @@ export default function DasherPickupPage() {
       const now = Date.now();
       if (now - lastUpdate < 5000) return;
       lastUpdate = now;
+      const sig = localStorage.getItem("dasher_claim_sig") ?? "";
       fetch(`/api/orders/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Claim-Sig": sig },
         body: JSON.stringify({ dasherLat: pos.coords.latitude, dasherLng: pos.coords.longitude }),
       }).catch(() => {});
     }, () => {}, { enableHighAccuracy: true });
@@ -77,9 +78,10 @@ export default function DasherPickupPage() {
     setInput("");
     setSending(true);
     try {
+      const sig = localStorage.getItem("dasher_claim_sig") ?? "";
       await fetch(`/api/orders/${id}/message`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Claim-Sig": sig },
         body: JSON.stringify({ from: "dasher", text }),
       });
       const res = await fetch(`/api/orders/${id}/message`);
@@ -97,9 +99,10 @@ export default function DasherPickupPage() {
     if (!order || starting) return;
     setStarting(true);
     try {
+      const sig = localStorage.getItem("dasher_claim_sig") ?? "";
       const res = await fetch(`/api/orders/${order.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Claim-Sig": sig },
         body: JSON.stringify({ status: "picked_up" }),
       });
       if (!res.ok) { setStarting(false); return; }

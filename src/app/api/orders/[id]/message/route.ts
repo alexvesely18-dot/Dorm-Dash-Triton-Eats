@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrder, setOrder } from "@/lib/orderStore";
 import { rateLimit, getIp } from "@/lib/rateLimit";
 import { isValidOrderId, sanitizeText, isOneOf } from "@/lib/validate";
+import { timingSafeStringEqual } from "@/lib/adminAuth";
 
 // POST /api/orders/:id/message  { from: "student"|"dasher", text: string }
+// Dasher-sent messages require X-Claim-Sig matching the order so a stranger
+// who guessed the order id can't impersonate the dasher in chat. Student-side
+// messages stay open (the student is whoever owns the device with the order id).
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -33,14 +37,25 @@ export async function POST(
     return NextResponse.json({ error: "Invalid sender" }, { status: 400 });
   }
 
+  // Dasher must prove they hold the claim secret. Without this, anyone with
+  // the order id could send messages spoofed as the dasher.
+  if (from === "dasher") {
+    const sig = req.headers.get("x-claim-sig") ?? "";
+    if (!order.claimSecret || !sig || !timingSafeStringEqual(sig, order.claimSecret)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
   const text = sanitizeText(body.text, 500);
   if (!text) return NextResponse.json({ error: "Empty message" }, { status: 400 });
 
-  const msg = { from, text, at: new Date().toISOString() };
-  order.messages = [...(order.messages ?? []), msg];
+  // Cap stored history to avoid unbounded growth (and a denial-of-storage attack
+  // where someone hammers messages forever).
+  const messages = [...(order.messages ?? []), { from, text, at: new Date().toISOString() }].slice(-200);
+  order.messages = messages;
   await setOrder(id, order);
 
-  return NextResponse.json({ message: msg, messages: order.messages });
+  return NextResponse.json({ message: messages[messages.length - 1], messages });
 }
 
 // GET /api/orders/:id/message — returns all messages for polling

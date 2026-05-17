@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   }
 
   const token = req.headers.get("authorization")?.replace("Bearer ", "") ?? null;
-  if (!isValidAdminToken(token)) {
+  if (!(await isValidAdminToken(token))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

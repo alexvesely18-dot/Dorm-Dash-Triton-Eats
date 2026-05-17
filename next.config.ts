@@ -14,20 +14,22 @@ const securityHeaders = [
   { key: "Permissions-Policy",        value: "camera=(self), microphone=(), geolocation=(self), payment=()" },
   // Leaflet map tiles come from OpenStreetMap; image data may also come from blob: URLs
   // for the OCR pre-upload preview. unsafe-inline on style is required for Tailwind's JIT
-  // class strings and inline icon SVGs. Tighten in Phase 2 once we ship nonces.
+  // class strings and inline icon SVGs. unsafe-eval is intentionally NOT allowed —
+  // nothing in production needs it. Tighten further in Phase 2 with script nonces.
   {
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
       "img-src 'self' data: blob: https://*.openstreetmap.org https://*.tile.openstreetmap.org",
       "style-src 'self' 'unsafe-inline'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "script-src 'self' 'unsafe-inline'",
       "connect-src 'self' https://*.upstash.io https://*.openstreetmap.org",
       "font-src 'self' data:",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
       "object-src 'none'",
+      "upgrade-insecure-requests",
     ].join("; "),
   },
 ];
@@ -38,6 +40,16 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      // Defense-in-depth: admin responses must never be cached by any intermediary
+      // proxy or by the browser. This also stops admin order lists from being
+      // served by the browser's back-forward cache after logout.
+      {
+        source: "/api/admin/:path*",
+        headers: [
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private" },
+          { key: "Pragma",        value: "no-cache" },
+        ],
+      },
     ];
   },
 };

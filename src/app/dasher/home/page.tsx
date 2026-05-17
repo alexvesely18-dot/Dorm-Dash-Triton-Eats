@@ -131,6 +131,9 @@ export default function DasherHomePage() {
       const data = await res.json();
       if (!data.order?.id) { setClaiming(false); return; }
       localStorage.setItem("dasher_claimed_order_id", data.order.id);
+      // Per-order secret required on every subsequent dasher PATCH so a random
+      // caller who guessed the order id can't mark it delivered or spoof GPS.
+      if (data.claimSecret) localStorage.setItem("dasher_claim_sig", String(data.claimSecret));
       window.location.href = "/dasher/pickup";
     } catch {
       setClaiming(false);
@@ -371,7 +374,7 @@ export default function DasherHomePage() {
             </div>
 
             <button
-              onClick={() => { ["dasher_name","dasher_college","dasher_transport","dasher_claimed_order_id"].forEach(k => localStorage.removeItem(k)); window.location.href = "/dasher"; }}
+              onClick={() => { ["dasher_name","dasher_college","dasher_transport","dasher_claimed_order_id","dasher_claim_sig","dasher_history"].forEach(k => localStorage.removeItem(k)); window.location.href = "/dasher"; }}
               className="w-full flex items-center justify-center gap-2 bg-white border-2 border-red-200 text-red-500 font-bold py-4 rounded-2xl shadow-sm hover:bg-red-50 transition"
             >
               Sign Out

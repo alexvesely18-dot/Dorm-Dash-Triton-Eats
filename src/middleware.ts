@@ -27,10 +27,34 @@ export function middleware(req: NextRequest) {
     return new NextResponse("Not found", { status: 404 });
   }
 
-  if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH") {
+  if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE") {
     const contentLength = Number(req.headers.get("content-length") ?? "0");
     if (contentLength > MAX_BODY_BYTES) {
       return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+    }
+
+    // CSRF defense for any state-changing API call. Browsers always send Origin on
+    // CORS requests; if Origin is set, it must match this host. Same-origin fetches
+    // from our own pages also send Origin, so legitimate calls pass.
+    if (pathname.startsWith("/api/")) {
+      const origin = req.headers.get("origin");
+      if (origin) {
+        try {
+          const o = new URL(origin);
+          const host = req.headers.get("host") ?? "";
+          // Compare hostname against the request host; allow port differences for local dev.
+          const sameHost = o.host === host || o.hostname === host.split(":")[0];
+          if (!sameHost) {
+            return NextResponse.json({ error: "Cross-origin request blocked" }, { status: 403 });
+          }
+        } catch {
+          return NextResponse.json({ error: "Invalid origin" }, { status: 400 });
+        }
+      }
+      // Missing Origin (some same-origin GET-style flows) is allowed — fetch from our
+      // own page typically sets Origin for non-GET, but Safari and some legacy clients
+      // omit it. Combined with the rate-limit + token checks downstream, blocking on
+      // missing Origin would cause too many false positives.
     }
   }
 

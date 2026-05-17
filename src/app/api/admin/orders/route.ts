@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllOrders } from "@/lib/orderStore";
+import { getAllOrders, publicOrder } from "@/lib/orderStore";
 import { isValidAdminToken } from "@/lib/adminAuth";
 import { rateLimit, getIp } from "@/lib/rateLimit";
 
@@ -11,12 +11,12 @@ export async function GET(req: NextRequest) {
   }
 
   const token = req.headers.get("authorization")?.replace("Bearer ", "") ?? null;
-  if (!isValidAdminToken(token)) {
+  if (!(await isValidAdminToken(token))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const orders = (await getAllOrders()).sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
-  return NextResponse.json({ orders });
+  return NextResponse.json({ orders: orders.map(publicOrder) });
 }
